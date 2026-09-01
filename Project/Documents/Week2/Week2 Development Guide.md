@@ -30,10 +30,10 @@
 
 ## 2. 四人独立执行文件
 
-- [CXY Nodes.md](CXY%20Nodes.md)：DoD、契约、授权、失败用例、格式抽检和验收。
-- [LJQ Nodes.md](LJQ%20Nodes.md)：参考规范、算法参数、真实试听验证和失败场景。
-- [LHY Nodes.md](LHY%20Nodes.md)：音频服务、音色服务、原子索引、重启恢复和事件集成。
-- [WGX Nodes.md](WGX%20Nodes.md)：音频页、音色页、跨页状态和浏览器联调。
+- [CXY Nodes.md](WorkScheduleGuide/CXY%20Nodes.md)：DoD、契约、授权、失败用例、格式抽检和验收。
+- [LJQ Nodes.md](WorkScheduleGuide/LJQ%20Nodes.md)：参考规范、算法参数、真实试听验证和失败场景。
+- [LHY Nodes.md](WorkScheduleGuide/LHY%20Nodes.md)：音频服务、音色服务、原子索引、重启恢复和事件集成。
+- [WGX Nodes.md](WorkScheduleGuide/WGX%20Nodes.md)：音频页、音色页、跨页状态和浏览器联调。
 - [GPU Environment Baseline.md](../GPU%20Environment%20Baseline.md)：40 系 / 50 系环境矩阵；GPU 冒烟前对照。
 
 ## 3. 工程主流程

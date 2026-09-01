@@ -30,10 +30,10 @@
 
 ## 2. 四人独立执行文件
 
-- [CXY Nodes.md](CXY%20Nodes.md)：最终 DoD、演示脚本、功能—证据矩阵、已知限制与终审。
-- [LJQ Nodes.md](LJQ%20Nodes.md)：演示参数冻结、最终回归样音、答辩前资源检查、算法边界说明。
-- [LHY Nodes.md](LHY%20Nodes.md)：典型失败处理、测试补全、全新实例验证、README 技术说明。
-- [WGX Nodes.md](WGX%20Nodes.md)：主题精修、四态统一、浏览器兼容、录屏支持与终稿截图。
+- [CXY Nodes.md](WorkScheduleGuide/CXY%20Nodes.md)：最终 DoD、演示脚本、功能—证据矩阵、已知限制与终审。
+- [LJQ Nodes.md](WorkScheduleGuide/LJQ%20Nodes.md)：演示参数冻结、最终回归样音、答辩前资源检查、算法边界说明。
+- [LHY Nodes.md](WorkScheduleGuide/LHY%20Nodes.md)：典型失败处理、测试补全、全新实例验证、README 技术说明。
+- [WGX Nodes.md](WorkScheduleGuide/WGX%20Nodes.md)：主题精修、四态统一、浏览器兼容、录屏支持与终稿截图。
 - [GPU Environment Baseline.md](../GPU%20Environment%20Baseline.md)：答辩前 GPU/环境对照。
 
 ## 3. 工程主流程

@@ -209,6 +209,6 @@ Week 1 若只有官方 WebUI 在本机出声而项目未接入，仍记 **「部
 ## 依据
 
 - 统一范围：`Project/Documents/newplan.md`
-- Week 1 节点：`Project/Documents/Week1/LJQ Nodes.md`（LJQ-N1）
+- Week 1 节点：`Project/Documents/Week1/WorkScheduleGuide/LJQ Nodes.md`（LJQ-N1）
 - GPT-SoVITS：<https://github.com/RVC-Boss/GPT-SoVITS>
 - 本仓库 50 系参考包：`Reference-Project/GPT-SoVITS-v2pro-20250604-nvidia50.7z`

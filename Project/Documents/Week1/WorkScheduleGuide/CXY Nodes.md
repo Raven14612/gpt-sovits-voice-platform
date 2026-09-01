@@ -19,9 +19,7 @@
 
 **输出**
 
-- Week 1 DoD。
-- 四页导航文案。
-- 禁止事项清单。
+- [CXY-N1 Scope and DoD.md](CXY-N1%20Scope%20and%20DoD.md)：Week 1 DoD、四页导航文案和禁止事项清单。
 
 **三个指标**
 

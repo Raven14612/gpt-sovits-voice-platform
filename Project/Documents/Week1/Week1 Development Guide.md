@@ -39,10 +39,10 @@
 
 ## 3. 四人独立执行文件
 
-- [CXY Nodes.md](CXY%20Nodes.md)：范围、资产、契约、预演与验收。
-- [LJQ Nodes.md](LJQ%20Nodes.md)：环境、零样本 TTS、切分/ASR 与算法交接。
-- [LHY Nodes.md](LHY%20Nodes.md)：工程骨架、services、错误处理和一键集成。
-- [WGX Nodes.md](WGX%20Nodes.md)：页面结构、四页空壳、切换、状态与浏览器联调。
+- [CXY Nodes.md](WorkScheduleGuide/CXY%20Nodes.md)：范围、资产、契约、预演与验收。
+- [LJQ Nodes.md](WorkScheduleGuide/LJQ%20Nodes.md)：环境、零样本 TTS、切分/ASR 与算法交接。
+- [LHY Nodes.md](WorkScheduleGuide/LHY%20Nodes.md)：工程骨架、services、错误处理和一键集成。
+- [WGX Nodes.md](WorkScheduleGuide/WGX%20Nodes.md)：页面结构、四页空壳、切换、状态与浏览器联调。
 - [GPU Environment Baseline.md](../GPU%20Environment%20Baseline.md)：**40 系 / 50 系双轨道环境基线**（LJQ 主责填写，全组对照）。
 
 每个人只修改自己主责的工程；允许结对帮助，但节点交付和解释责任不转移。

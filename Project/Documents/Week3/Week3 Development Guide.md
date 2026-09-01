@@ -30,10 +30,10 @@
 
 ## 2. 四人独立执行文件
 
-- [CXY Nodes.md](CXY%20Nodes.md)：DoD、契约 v2.0、回归听测、失败用例、抽检与验收。
-- [LJQ Nodes.md](LJQ%20Nodes.md)：中性合成基线、情绪映射、项目内合成验证、双条件对照与失败场景。
-- [LHY Nodes.md](LHY%20Nodes.md)：`tts_service`、`history_service`、失败不写成功历史、重启恢复与事件集成。
-- [WGX Nodes.md](WGX%20Nodes.md)：合成页、结果页、跨页跳页与复用回填、浏览器联调。
+- [CXY Nodes.md](WorkScheduleGuide/CXY%20Nodes.md)：DoD、契约 v2.0、回归听测、失败用例、抽检与验收。
+- [LJQ Nodes.md](WorkScheduleGuide/LJQ%20Nodes.md)：中性合成基线、情绪映射、项目内合成验证、双条件对照与失败场景。
+- [LHY Nodes.md](WorkScheduleGuide/LHY%20Nodes.md)：`tts_service`、`history_service`、失败不写成功历史、重启恢复与事件集成。
+- [WGX Nodes.md](WorkScheduleGuide/WGX%20Nodes.md)：合成页、结果页、跨页跳页与复用回填、浏览器联调。
 - [GPU Environment Baseline.md](../GPU%20Environment%20Baseline.md)：40 系 / 50 系环境矩阵；合成冒烟前对照。
 
 ## 3. 工程主流程
