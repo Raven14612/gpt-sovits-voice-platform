@@ -1,0 +1,27 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import gradio as gr
+
+from ui.layout import render_root_layout
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+CSS_PATH = PROJECT_ROOT / "assets" / "theme.css"
+
+
+def load_css() -> str:
+    if not CSS_PATH.exists():
+        return ""
+    return CSS_PATH.read_text(encoding="utf-8")
+
+
+def build_app() -> gr.Blocks:
+    with gr.Blocks(title="AI 音频生成", css=load_css()) as demo:
+        render_root_layout()
+    demo.queue()
+    return demo
+
+
+if __name__ == "__main__":
+    build_app().launch(server_name="127.0.0.1")

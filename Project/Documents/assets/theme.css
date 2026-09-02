@@ -1,0 +1,23 @@
+:root {
+  --page-bg: #f4f7fb;
+  --card-bg: #ffffff;
+  --text-main: #1f2937;
+  --text-muted: #526071;
+  --accent: #2563eb;
+  --border: #d7dfeb;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 34%),
+    linear-gradient(180deg, #f8fbff 0%, var(--page-bg) 100%);
+  color: var(--text-main);
+}
+
+.gradio-container {
+  max-width: 960px !important;
+}
+
+.block {
+  border: 1px solid var(--border);
+}
