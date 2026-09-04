@@ -1,13 +1,13 @@
 # WGX 任务单：Gradio 前端与用户体验
 
-> 角色定位：前端领域负责人。开发不依赖本机 GPU，不等待模型训练完成。  
+> 角色定位：低耦合前端交付人。开发不依赖本机 GPU，不参与模型联调，也不等待模型训练完成。
 > 页面通过 services 契约工作，不直接调用 GPT-SoVITS 命令。
 
 ## 当前任务队列
 
 ## 现在立刻做什么
 
-先把当前四页页面壳做成可点击、可切换的真实结构，再接任务状态。不要等待模型训练，不要在前端写 GPT-SoVITS 命令，也不要用假音频填充页面。
+先把当前四页页面壳做成可点击、可切换的真实结构，再接任务状态。页面完成后直接交付给 CXY 合并；不要等待模型训练，不要参与 adapter/GPU 联调，不要在前端写 GPT-SoVITS 命令，也不要用假音频填充页面。
 
 ### WGX-W1-01：四页工程壳（P0，可立即开始）
 
@@ -15,13 +15,13 @@
 - **共享 State**：`selected_dataset`、`selected_slice`、`selected_voice`、`active_task`、`current_result`。
 - **产物**：UI 代码、组件清单和四页截图。
 - **通过**：默认音频页；主区一次只显示一页；环境状态不是第五页；没有假音色卡和假音频。
-- **下游**：LHY-W1-04。
+- **下游**：直接提交给 CXY 按主线需要合并；不等待 LHY、LJQ 或 CXY 的模型结果，也不阻塞 50 系模型工作。
 
 **可直接交给 AI 的提示词**
 
 ```text
 请先阅读：
-1. Project/Documents/当前执行计划 v3.md
+1. Project/Documents/当前执行计划 v4.md（文档标题已更新为 v4）
 2. Project/Documents/契约/engine-adapter-v0.1.md
 3. Project/Documents/成员任务/WGX.md
 4. Project/ui 现有文件

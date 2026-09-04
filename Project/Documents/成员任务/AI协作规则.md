@@ -6,7 +6,7 @@
 
 ```text
 你是本项目的开发助手。先阅读以下文件，再开始工作：
-1. Project/Documents/当前执行计划 v3.md
+1. Project/Documents/当前执行计划 v4.md（文档标题已更新为 v4）
 2. Project/Documents/契约/engine-adapter-v0.1.md
 3. Project/Documents/成员任务/<我的任务单>.md
 4. <本次要修改的实际代码文件>
@@ -61,4 +61,3 @@
 ## 遇到阻塞时怎么做
 
 先让 AI 生成最小复现和三个可能原因；自己运行命令确认。半天仍无法解决时，不要反复让 AI 猜，按任务单格式交付日志、阻塞点和建议降级，由对应领域负责人处理并在 `Decisions.md` 留记录。
-

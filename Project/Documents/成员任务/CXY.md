@@ -5,6 +5,8 @@
 
 ## 当前任务队列
 
+> 主线原则：你只需要亲自完成 50 系真实模型链路、主线联调和验收。LHY 的离线模块完成后即可接入；WGX 和 LJQ 的交付晚到不阻塞你先跑通 MVP。
+
 ## 现在立刻做什么
 
 先不要写新页面，也不要安装新整合包。你可以继续只用 Web UI，但必须按 [Web UI 整合包取证指南](../环境/WebUI整合包取证指南.md) 留证：用现有 `xxx-e15.ckpt` 和 `xxx_e8_s200.pth` 生成一条**新的** WAV，截图保存页面输入和权重路径，复制控制台日志，再从输出目录确认新文件。不要猜命令；把页面动作对应的源码位置和真实结果发给 LHY，让他据此接通 adapter。
@@ -21,7 +23,7 @@
 
 ```text
 你是本地 Windows GPT-SoVITS 调试助手。请先阅读：
-1. Project/Documents/当前执行计划 v3.md
+1. Project/Documents/当前执行计划 v4.md（文档标题已更新为 v4）
 2. Project/Documents/契约/engine-adapter-v0.1.md
 3. Project/Documents/成员任务/CXY.md
 
@@ -80,7 +82,7 @@
 **可直接交给 AI 的提示词**
 
 ```text
-请根据 Project/Documents/当前执行计划 v3.md、契约文件和四人任务单，生成 Week 1 联调验收表。
+请根据 Project/Documents/当前执行计划 v4.md（文档标题已更新为 v4）、契约文件和四人任务单，生成 Week 1 联调验收表。50 系是唯一 MVP 阻断轨，40 系只作可选参考。
 
 现有证据如下：
 <填写真实文件、日志、WAV、截图路径>
