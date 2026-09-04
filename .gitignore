@@ -157,6 +157,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# Keep project environment baselines and LJQ-N1 evidence trackable
+!Project/Documents/env/
+!Project/Documents/env/*.md
+!Project/Documents/env/*.txt
+
 # Spyder project settings
 .spyderproject
 .spyproject

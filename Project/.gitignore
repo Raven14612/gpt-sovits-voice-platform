@@ -1,23 +1,28 @@
 .venv/
-.tmp/
-__pycache__/
 .pytest_cache/
-startup.stdout.log
-startup.stderr.log
+__pycache__/
+*.py[cod]
+*.log
 
+# Local engine configuration and secrets
+config/engine.local.json
+.env
+
+# User-provided audio, generated files and model weights
 data/uploads/*
 !data/uploads/.gitkeep
-
 data/datasets/*
 !data/datasets/.gitkeep
-
 data/voices/*
 !data/voices/.gitkeep
-
 data/outputs/*
 !data/outputs/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
 
-assets/authorized_presets/*
-!assets/authorized_presets/.gitkeep
+*.ckpt
+*.pth
+*.wav
+*.mp3
+*.flac
 
-.idea/

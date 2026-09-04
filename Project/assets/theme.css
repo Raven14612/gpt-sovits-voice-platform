@@ -1,23 +1,36 @@
 :root {
-  --page-bg: #f4f7fb;
+  --page-bg: #f5f6fb;
   --card-bg: #ffffff;
-  --text-main: #1f2937;
-  --text-muted: #526071;
-  --accent: #2563eb;
-  --border: #d7dfeb;
+  --text-main: #202537;
+  --text-muted: #667085;
+  --accent: #6557d2;
+  --border: #e3e5ee;
 }
 
 body {
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 34%),
-    linear-gradient(180deg, #f8fbff 0%, var(--page-bg) 100%);
+  background: linear-gradient(180deg, #fafbff 0%, var(--page-bg) 100%);
   color: var(--text-main);
 }
 
 .gradio-container {
-  max-width: 960px !important;
+  max-width: 1280px !important;
 }
 
-.block {
+#topbar,
+#sidebar,
+#page-content {
+  background: var(--card-bg);
   border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
 }
+
+#sidebar {
+  min-height: 680px;
+}
+
+#environment-status {
+  margin-top: 24px;
+  color: var(--text-muted);
+}
+

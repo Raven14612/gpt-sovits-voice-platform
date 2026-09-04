@@ -17,11 +17,12 @@ def load_css() -> str:
 
 
 def build_app() -> gr.Blocks:
-    with gr.Blocks(title="AI 音频生成", css=load_css()) as demo:
+    with gr.Blocks(title="轻量级音色克隆", css=load_css()) as demo:
         render_root_layout()
-    demo.queue()
+    demo.queue(default_concurrency_limit=1)
     return demo
 
 
 if __name__ == "__main__":
     build_app().launch(server_name="127.0.0.1")
+

@@ -1,1 +1,2 @@
-"""UI package for the single-entry Gradio application."""
+"""Gradio UI modules."""
+
