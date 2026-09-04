@@ -11,6 +11,7 @@
 4. 使用 AI 前阅读 [全员 AI 协作规则](成员任务/AI协作规则.md)。
 5. 开发公共接口时阅读 [契约/engine-adapter-v0.1.md](契约/engine-adapter-v0.1.md)。
 6. 执行 GPU 工作时阅读 [环境/GPU兼容矩阵.md](环境/GPU兼容矩阵.md)。
+7. 通过整合包 Web UI 做实验时阅读 [Web UI 整合包取证指南](环境/WebUI整合包取证指南.md)。
 
 ## 当前负责人
 
