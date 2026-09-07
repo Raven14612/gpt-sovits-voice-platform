@@ -1,0 +1,50 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam defaultFontName Microsoft YaHei
+skinparam usecase {
+  BackgroundColor #F1F8E9
+  BorderColor #689F38
+  ArrowColor #333333
+}
+skinparam rectangle {
+  BackgroundColor #E3F2FD
+  BorderColor #1565C0
+}
+
+actor "项目使用者" as User
+actor "开发者" as Dev
+actor "观察者" as Viewer
+actor "GPT-SoVITS本地运行时" as Engine
+
+rectangle "语音克隆及合成的音色共享平台" {
+  usecase "环境探测与配置" as UC1
+  usecase "音频导入与切片" as UC2
+  usecase "ASR与人工校对" as UC3
+  usecase "特征提取" as UC4
+  usecase "音色训练与权重管理" as UC5
+  usecase "文本合成" as UC6
+  usecase "历史记录与结果管理" as UC7
+  usecase "统一状态与错误处理" as UC8
+}
+
+User --> UC2
+User --> UC3
+User --> UC5
+User --> UC6
+User --> UC7
+Dev --> UC1
+Dev --> UC4
+Dev --> UC5
+Dev --> UC8
+Viewer --> UC1
+Viewer --> UC7
+UC1 --> Engine
+UC2 ..> UC8 : <<include>>
+UC3 ..> UC8 : <<include>>
+UC4 ..> UC8 : <<include>>
+UC5 ..> UC8 : <<include>>
+UC6 ..> UC8 : <<include>>
+UC7 ..> UC8 : <<include>>
+@enduml

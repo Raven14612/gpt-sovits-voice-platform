@@ -1,0 +1,19 @@
+@startuml
+skinparam sequenceArrowThickness 2
+skinparam sequenceParticipantFontSize 11
+
+actor 用户
+participant "voice_page" as FE0
+participant "task_status" as FE1
+participant "voice_serviceService" as BE0
+participant "task_serviceService" as BE1
+database "数据库" as DB
+
+用户 -> FE0 : 触发操作
+FE0 -> BE0 : 调用接口
+BE0 -> DB : 查询/更新数据
+DB --> BE0 : 返回结果
+BE0 --> FE0 : 返回响应
+FE0 --> 用户 : 更新界面
+
+@enduml

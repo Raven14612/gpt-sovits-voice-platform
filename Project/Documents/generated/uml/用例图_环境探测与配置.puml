@@ -1,0 +1,16 @@
+@startuml
+left to right direction
+skinparam defaultFontName Microsoft YaHei
+actor "开发者" as Dev
+actor "观察者" as Viewer
+rectangle "环境探测与配置" {
+ usecase "配置读取" as A
+ usecase "运行时探测" as B
+ usecase "错误映射" as C
+}
+Dev --> A
+Dev --> B
+Viewer --> B
+B ..> A : <<include>>
+B ..> C : <<include>>
+@enduml

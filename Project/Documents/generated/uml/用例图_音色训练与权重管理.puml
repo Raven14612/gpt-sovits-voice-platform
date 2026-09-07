@@ -1,0 +1,17 @@
+@startuml
+left to right direction
+skinparam defaultFontName Microsoft YaHei
+actor "项目使用者" as User
+actor "开发者" as Dev
+actor "GPT-SoVITS本地运行时" as Engine
+rectangle "音色训练与权重管理" {
+ usecase "训练任务管理" as A
+ usecase "GPU串行控制" as B
+ usecase "音色档案保存" as C
+}
+User --> A
+Dev --> A
+Engine --> A
+A ..> B : <<include>>
+A ..> C : <<include>>
+@enduml

@@ -1,0 +1,21 @@
+@startuml
+skinparam defaultFontName Microsoft YaHei
+|开发者|
+start
+:读取 engine.local.json;
+|系统|
+:解析并校验配置;
+if (配置有效?) then (是)
+  :检查引擎目录和解释器;
+  :启动参数数组探测命令;
+  :采集 stdout/stderr/退出码;
+  if (输出完整且 GPU 可用?) then (是)
+    :返回 EngineStatus 可用;
+  else (否)
+    :映射 ENGINE_UNAVAILABLE 或 GPU_UNAVAILABLE;
+  endif
+else (否)
+  :返回 ENGINE_CONFIG_MISSING;
+endif
+stop
+@enduml

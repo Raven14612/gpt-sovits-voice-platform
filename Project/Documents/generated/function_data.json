@@ -1,0 +1,244 @@
+{
+  "modules": [
+    {
+      "id": "F001",
+      "name": "环境探测与配置",
+      "sub_functions": [
+        {
+          "name": "配置读取",
+          "desc": "读取本地 GPT-SoVITS 引擎配置，并校验配置结构。",
+          "input": "config/engine.local.json，包含 profile、engine_root、python_path、max_gpu_jobs=1 和 parallel_infer=false。",
+          "process": "检查配置文件是否存在；解析 JSON；用 EngineConfig 校验字段；缺失或非法时返回未配置状态，不启动外部进程。",
+          "output": "有效配置对象，或包含明确原因的未配置状态。",
+          "activity_image": null
+        },
+        {
+          "name": "运行时探测",
+          "desc": "探测外部运行时的 Python、Torch、CUDA 和 GPU 状态。",
+          "input": "经校验的引擎根目录和 Python 解释器绝对路径。",
+          "process": "验证目录与解释器；构造参数数组；在引擎目录运行探测代码；采集 stdout、stderr、退出码与超时；解析版本和 GPU 信息。",
+          "output": "EngineStatus，包含 configured、available、版本、GPU 名称和状态消息。",
+          "activity_image": "流程图_运行时探测.png"
+        },
+        {
+          "name": "错误映射",
+          "desc": "把配置、运行时和 GPU 异常转换为统一错误语义。",
+          "input": "文件异常、配置校验异常、子进程异常、超时和探测输出。",
+          "process": "按异常来源判断错误类型，保留可诊断消息，并避免暴露或固化个人绝对路径。",
+          "output": "ENGINE_CONFIG_MISSING、ENGINE_UNAVAILABLE、GPU_UNAVAILABLE 等统一错误。",
+          "activity_image": null
+        }
+      ]
+    },
+    {
+      "id": "F002",
+      "name": "音频导入与切片",
+      "sub_functions": [
+        {
+          "name": "授权音频导入",
+          "desc": "接收用户授权音频并执行格式与路径边界校验。",
+          "input": "用户上传的音频文件；配置的引擎目录、项目数据目录或显式授权输入目录。",
+          "process": "解析输入路径为绝对路径；校验文件存在、格式有效且位于允许目录；不符合条件时返回 INVALID_AUDIO。",
+          "output": "可处理的安全音频路径，或 INVALID_AUDIO 错误。",
+          "activity_image": null
+        },
+        {
+          "name": "固定参数切片",
+          "desc": "使用冻结参数把源音频切分为适合识别和训练的片段。",
+          "input": "已校验音频；threshold=-34、min_length=4000、min_interval=300、hop_size=10、max_sil_kept=500。",
+          "process": "创建任务与输出目录；获取 GPU/任务资源；构造切片命令；执行并记录日志、退出码和超时；检查切片文件；更新任务和数据集状态。",
+          "output": "切片目录、片段文件、阶段日志及成功或失败状态。",
+          "activity_image": "流程图_音频处理.png"
+        },
+        {
+          "name": "数据集建档",
+          "desc": "把音频来源、处理结果和状态保存为可恢复的数据集档案。",
+          "input": "dataset_id、display_name、source_path、slice_dir、status 等字段。",
+          "process": "读取现有 datasets.json；按 dataset_id 更新或新增；写入临时文件并 fsync；原子替换正式索引。",
+          "output": "DatasetRecord 和更新后的 datasets.json。",
+          "activity_image": null
+        }
+      ]
+    },
+    {
+      "id": "F003",
+      "name": "ASR与人工校对",
+      "sub_functions": [
+        {
+          "name": "中文识别",
+          "desc": "对切片目录执行中文 ASR，产生可人工修改的初稿。",
+          "input": "已完成切片的数据集目录和中文识别配置。",
+          "process": "校验数据集；创建 ASR 阶段任务；调用外部识别命令；记录日志和超时；校验 .list 输出；失败时标记 ASR_FAILED。",
+          "output": ".list 文件路径、逐条识别文本和阶段状态。",
+          "activity_image": "流程图_ASR与人工校对.png"
+        },
+        {
+          "name": "文本校对",
+          "desc": "允许用户逐条修正识别文本，形成训练使用的准确标注。",
+          "input": "切片标识、ASR 初稿和用户修改后的非空文本。",
+          "process": "展示片段与初稿；接收编辑；校验文本；保存到标注列表；更新数据集校对状态。",
+          "output": "校对后的文本列表及保存反馈。",
+          "activity_image": null
+        },
+        {
+          "name": "情绪标注",
+          "desc": "为片段添加中性、开心或悲伤的人工情绪标签。",
+          "input": "片段标识与 neutral、happy、sad 之一。",
+          "process": "校验标签枚举；保证同一音色每种情绪主参考唯一；保存 emotions 文件并更新界面。",
+          "output": "情绪标注结果、可用参考片段和保存反馈。",
+          "activity_image": null
+        }
+      ]
+    },
+    {
+      "id": "F004",
+      "name": "特征提取",
+      "sub_functions": [
+        {
+          "name": "特征任务创建",
+          "desc": "为已校对的数据集创建可追踪的特征提取任务。",
+          "input": "dataset_id、校对列表路径和任务参数。",
+          "process": "检查数据集和标注输出；创建 pending 任务；检查 GPU 锁；准备日志目录和目标特征目录。",
+          "output": "TaskRecord 或 GPU_BUSY、OUTPUT_INVALID 错误。",
+          "activity_image": null
+        },
+        {
+          "name": "特征提取执行",
+          "desc": "通过配置的外部解释器执行特征提取阶段。",
+          "input": "参数数组、引擎工作目录、输出目录和超时值。",
+          "process": "获取 GPU 锁；状态转 running；执行子进程；记录日志；检查退出码和输出；转为 succeeded/failed；最终释放锁。",
+          "output": "特征目录、日志、失败阶段和终态。",
+          "activity_image": "流程图_特征提取.png"
+        },
+        {
+          "name": "输出校验",
+          "desc": "确认特征提取产生了后续训练所需文件。",
+          "input": "声明的特征文件或目录集合。",
+          "process": "逐项检查文件是否存在；聚合缺失项；缺失时抛出 OUTPUT_INVALID。",
+          "output": "校验通过，或包含缺失路径的统一错误。",
+          "activity_image": null
+        }
+      ]
+    },
+    {
+      "id": "F005",
+      "name": "音色训练与权重管理",
+      "sub_functions": [
+        {
+          "name": "训练任务管理",
+          "desc": "管理音色训练任务的阶段、状态、消息和日志。",
+          "input": "数据集、音色 ID、训练参数和 TaskRecord。",
+          "process": "校验数据集；创建 pending 任务；按合法状态转换运行；异常映射为 failed；允许取消；终态禁止非法再次转换。",
+          "output": "具有 pending/running/succeeded/failed/cancelled 状态的任务记录。",
+          "activity_image": null
+        },
+        {
+          "name": "GPU 串行控制",
+          "desc": "保证训练、特征和合成任务不并行占用 GPU。",
+          "input": "准备执行 GPU 操作的任务。",
+          "process": "非阻塞获取全局锁；获取失败立即返回 GPU_BUSY；执行任务；无论成功或异常都释放锁。",
+          "output": "已执行任务的终态，或 GPU_BUSY 错误。",
+          "activity_image": null
+        },
+        {
+          "name": "音色档案保存",
+          "desc": "保存音色元数据、权重路径和人工情绪参考。",
+          "input": "VoiceProfile，包括 voice_id、dataset_id、权重、references 和 engine_profile。",
+          "process": "校验显示名称和特征名；检查情绪参考唯一性；验证权重输出；原子写入 voices.json。",
+          "output": "可供合成选择的音色档案，或权重/参考缺失错误。",
+          "activity_image": "流程图_训练与权重管理.png"
+        }
+      ]
+    },
+    {
+      "id": "F006",
+      "name": "文本合成",
+      "sub_functions": [
+        {
+          "name": "合成参数输入",
+          "desc": "收集音色、文本、情绪、语速和片段间隔参数。",
+          "input": "voice_id、1至500字符文本、neutral/happy/sad、speed_factor 0.5至2.0、fragment_interval 0至2秒。",
+          "process": "校验音色和文本；限制数值范围；确认所选情绪存在参考音频；生成待执行记录。",
+          "output": "合法 GenerationRecord，或输入与参考缺失错误。",
+          "activity_image": null
+        },
+        {
+          "name": "外部引擎调用",
+          "desc": "使用音色权重和参考音频调用本地 GPT-SoVITS 合成服务。",
+          "input": "GPT/SoVITS 权重、参考 WAV 与文本、目标文本、端口和输出路径。",
+          "process": "校验文件；获取 GPU 锁；构造 api.py 参数数组；启动服务并记录日志；轮询本地接口；写入 WAV；终止子进程并释放锁。",
+          "output": "本地 WAV 文件和合成日志，或 SYNTHESIS_FAILED。",
+          "activity_image": "流程图_文本合成.png"
+        },
+        {
+          "name": "WAV 输出校验",
+          "desc": "确认合成结果真实存在且具备最小 WAV 结构。",
+          "input": "合成响应字节和目标输出路径。",
+          "process": "写入文件；检查文件存在且长度不少于 WAV 头；无效时标记 OUTPUT_INVALID，不创建成功历史。",
+          "output": "WAV 路径、采样率、时长、日志和真实任务状态。",
+          "activity_image": null
+        }
+      ]
+    },
+    {
+      "id": "F007",
+      "name": "历史记录与结果管理",
+      "sub_functions": [
+        {
+          "name": "历史查询",
+          "desc": "读取成功结果和任务历史，供结果页展示。",
+          "input": "data/index/history.json 与 tasks.json。",
+          "process": "读取并解析 JSON；格式错误时返回空集合并保留可诊断状态；只把真实成功结果显示为成功。",
+          "output": "按时间展示的结果与任务列表。",
+          "activity_image": null
+        },
+        {
+          "name": "结果复用",
+          "desc": "把历史记录中的音色和参数带回合成页。",
+          "input": "选中的 GenerationRecord。",
+          "process": "读取 voice_id、文本、情绪、速度和停顿；检查音色仍存在；填充合成表单，由用户确认后创建新任务。",
+          "output": "已预填的新合成请求。",
+          "activity_image": null
+        },
+        {
+          "name": "结果删除",
+          "desc": "删除用户指定的合成文件和对应索引记录。",
+          "input": "result_id 和经安全校验的 output_path。",
+          "process": "定位记录；校验文件位于项目输出目录；删除文件；原子更新历史索引；返回操作结果。",
+          "output": "删除反馈和更新后的历史列表。",
+          "activity_image": null
+        }
+      ]
+    },
+    {
+      "id": "F008",
+      "name": "统一状态与错误处理",
+      "sub_functions": [
+        {
+          "name": "状态转换",
+          "desc": "用状态机限制任务生命周期，避免成功后再次运行等非法转换。",
+          "input": "当前 TaskRecord、目标 TaskStatus、阶段、消息和日志路径。",
+          "process": "查询允许转换集合；非法转换抛出 INVALID_TASK_STATE；合法时更新时间、阶段和消息并返回新记录。",
+          "output": "更新后的不可变任务记录，或状态错误。",
+          "activity_image": null
+        },
+        {
+          "name": "统一错误",
+          "desc": "为配置、音频、ASR、特征、训练、权重、参考和合成失败提供稳定错误码。",
+          "input": "业务校验异常、文件异常、子进程退出和超时。",
+          "process": "按失败阶段选择 AppError 代码；附带用户可读消息、detail 和 stage；UI 根据代码展示错误状态。",
+          "output": "结构一致的 AppError。",
+          "activity_image": null
+        },
+        {
+          "name": "日志与恢复",
+          "desc": "记录每个阶段的执行证据，并通过 JSON 索引恢复可观察状态。",
+          "input": "任务 ID、阶段、stdout/stderr、退出码、输出文件和索引数据。",
+          "process": "按任务和阶段写日志；原子保存 JSON 索引；启动时重新读取；缺失输出时把任务恢复为失败而非成功。",
+          "output": "阶段日志、可恢复索引和可信任务状态。",
+          "activity_image": "流程图_任务状态与恢复.png"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+@startuml
+skinparam defaultFontName Microsoft YaHei
+skinparam activity {
+  BackgroundColor #E8F5E9
+  BorderColor #4CAF50
+  DiamondBackgroundColor #FFF9C4
+  DiamondBorderColor #F9A825
+}
+|项目使用者|
+start
+:上传授权音频;
+|系统|
+:校验绝对路径和音频有效性;
+if (路径和音频有效?) then (是)
+  :按固定参数切片;
+  :创建数据集档案;
+  :执行中文 ASR;
+else (否)
+  :返回 INVALID_AUDIO;
+  stop
+endif
+|项目使用者|
+:校对文本;
+:标记 neutral/happy/sad 情绪;
+|系统|
+:提取特征;
+:创建训练任务;
+if (GPU 空闲?) then (是)
+  :串行执行训练;
+  :保存 GPT/SoVITS 权重;
+else (否)
+  :返回 GPU_BUSY;
+  stop
+endif
+|项目使用者|
+:选择音色并输入文本;
+|系统|
+:校验参考音频、权重和参数;
+:调用 GPT-SoVITS 本地 API;
+if (输出为有效 WAV?) then (是)
+  :写入历史记录;
+  |项目使用者|
+  :播放、下载或复用结果;
+else (否)
+  :返回 OUTPUT_INVALID 或 SYNTHESIS_FAILED;
+endif
+stop
+@enduml
