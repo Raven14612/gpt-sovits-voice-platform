@@ -29,7 +29,7 @@ def render_root_layout() -> None:
 
     with gr.Row(elem_id="topbar"):
         gr.Markdown("# 轻量级音色克隆")
-        gr.Markdown("本地运行 · 40/50 系分轨验证")
+        gr.Markdown("本地运行 · RTX 50 系主线")
 
     with gr.Row(elem_id="app-shell"):
         with gr.Column(scale=1, min_width=220, elem_id="sidebar"):
@@ -52,4 +52,3 @@ def render_root_layout() -> None:
     pages = [audio_page, voice_page, tts_page, result_page]
     for index, button in enumerate([audio_button, voice_button, tts_button, result_button]):
         button.click(lambda page_index=index: _switch_page(page_index), outputs=pages)
-
