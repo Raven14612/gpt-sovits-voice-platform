@@ -1,2 +1,21 @@
-[]
-
+[
+  {
+    "voice_id": "citlali",
+    "display_name": "Citlali",
+    "feature_name": "Citlali",
+    "dataset_id": "citlali-w2",
+    "gpt_weight": "GPT_weights_v2Pro/Citlali-e15.ckpt",
+    "sovits_weight": "SoVITS_weights_v2Pro/Citlali_e8_s208.pth",
+    "references": [
+      {
+        "emotion": "neutral",
+        "audio_path": "output/slicer_opt/Citlali.wav_0000000000_0000182720.wav",
+        "prompt_text": "没错，我在人前的状态是装出来的，这才是我本来的性格。",
+        "language": "zh"
+      }
+    ],
+    "engine_profile": "cxy-50-local",
+    "status": "verified",
+    "created_at": "2026-09-08T00:00:00Z"
+  }
+]
