@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -52,10 +53,13 @@ def train_voice(
     voice_id: str,
     params: Mapping[str, Any],
 ) -> TaskRecord:
+    _validate_voice_id(voice_id)
     plan = _parse_training_params(params)
     if plan.gpt_command is None or plan.sovits_command is None:
         raise AppError("NOT_IMPLEMENTED", "训练引擎尚未接入，缺少 GPT/SoVITS stage command。", stage="training")
 
+    _archive_target(plan.gpt_weight_path, plan.archive_root, voice_id)
+    _archive_target(plan.sovits_weight_path, plan.archive_root, voice_id)
     dataset_record = _coerce_dataset(dataset)
     log_dir = plan.log_dir or DEFAULT_LOG_DIR
     runner = PipelineRunner(log_dir)
@@ -74,6 +78,12 @@ def train_voice(
 
         current = transition(task, TaskStatus.RUNNING, stage="train_gpt", message="开始执行")
         upsert_task(current, plan.task_index)
+        try:
+            gpt_before = _checkpoint_snapshot(plan.gpt_weight_path, plan.allowed_roots)
+        except (AppError, OSError) as exc:
+            failed = transition(current, TaskStatus.FAILED, message=str(exc))
+            upsert_task(failed, plan.task_index)
+            return failed
         current = runner.run_stage(
             current,
             "train_gpt",
@@ -90,6 +100,12 @@ def train_voice(
 
         current = transition(current, TaskStatus.RUNNING, stage="train_sovits", message="开始执行")
         upsert_task(current, plan.task_index)
+        try:
+            sovits_before = _checkpoint_snapshot(plan.sovits_weight_path, plan.allowed_roots)
+        except (AppError, OSError) as exc:
+            failed = transition(current, TaskStatus.FAILED, message=str(exc))
+            upsert_task(failed, plan.task_index)
+            return failed
         current = runner.run_stage(
             current,
             "train_sovits",
@@ -107,6 +123,8 @@ def train_voice(
         try:
             gpt_weight = _validate_checkpoint_file(plan.gpt_weight_path, plan.allowed_roots)
             sovits_weight = _validate_checkpoint_file(plan.sovits_weight_path, plan.allowed_roots)
+            _require_checkpoint_change(gpt_weight, plan.allowed_roots, gpt_before)
+            _require_checkpoint_change(sovits_weight, plan.allowed_roots, sovits_before)
             archived_gpt = _archive_weight(gpt_weight, plan.archive_root, voice_id)
             archived_sovits = _archive_weight(sovits_weight, plan.archive_root, voice_id)
 
@@ -250,7 +268,8 @@ def _validate_checkpoint_file(path: Path, allowed_roots: Sequence[Path]) -> Path
         raise AppError("VOICE_WEIGHTS_MISSING", f"权重文件为空：{resolved}", stage="packaging")
     if stat.st_mtime <= 0:
         raise AppError("VOICE_WEIGHTS_MISSING", f"权重修改时间无效：{resolved}", stage="packaging")
-    sample = resolved.read_bytes()[:1024]
+    with resolved.open("rb") as handle:
+        sample = handle.read(1024)
     if sample and _looks_like_text(sample):
         raise AppError("VOICE_WEIGHTS_MISSING", f"权重文件疑似文本占位：{resolved}", stage="packaging")
     return resolved
@@ -264,13 +283,58 @@ def _looks_like_text(sample: bytes) -> bool:
 
 
 def _archive_weight(source: Path, archive_root: Path, voice_id: str) -> Path:
-    archive_dir = archive_root / voice_id
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    target = archive_dir / source.name
+    target = _archive_target(source, archive_root, voice_id)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target = _archive_target(source, archive_root, voice_id)
     if source.resolve() == target.resolve():
         return target
     shutil.copy2(source, target)
     return target
+
+
+def _validate_voice_id(voice_id: str) -> None:
+    reserved = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+    reserved.update(f"{prefix}{number}" for prefix in ("COM", "LPT") for number in "123456789¹²³")
+    if (
+        not isinstance(voice_id, str)
+        or not voice_id
+        or voice_id in {".", ".."}
+        or voice_id != voice_id.strip()
+        or voice_id.endswith(".")
+        or any(ord(char) < 32 or char in '<>:"/\\|?*' for char in voice_id)
+        or voice_id.split(".")[0].upper() in reserved
+    ):
+        raise AppError("INVALID_VOICE_ID", "音色 ID 必须是有效的单层目录名。", stage="training")
+
+
+def _archive_target(source: Path, archive_root: Path, voice_id: str) -> Path:
+    _validate_voice_id(voice_id)
+    root = archive_root.expanduser().resolve()
+    archive_dir = (root / voice_id).resolve()
+    target = (archive_dir / source.name).resolve()
+    if archive_dir == root or not _is_allowed_path(archive_dir, [root]) or not _is_allowed_path(target, [archive_dir]):
+        raise AppError("OUTPUT_INVALID", "音色归档路径超出允许目录。", stage="packaging")
+    return target
+
+
+def _checkpoint_snapshot(path: Path, allowed_roots: Sequence[Path]) -> Optional[str]:
+    resolved = path.expanduser().resolve()
+    if not _is_allowed_path(resolved, allowed_roots):
+        raise AppError("OUTPUT_INVALID", f"权重路径不在允许范围内：{resolved}", stage="packaging")
+    if not resolved.exists():
+        return None
+    digest = hashlib.sha256()
+    with resolved.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _require_checkpoint_change(path: Path, allowed_roots: Sequence[Path], before: Optional[str]) -> None:
+    # Content comparison also catches unchanged weights with a refreshed timestamp.
+    after = _checkpoint_snapshot(path, allowed_roots)
+    if after is None or after == before:
+        raise AppError("OUTPUT_STALE", f"本次训练未生成新的权重内容：{path}", stage="packaging")
 
 
 def _is_allowed_path(path: Path, allowed_roots: Sequence[Path]) -> bool:

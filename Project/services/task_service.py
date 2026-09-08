@@ -49,16 +49,17 @@ def transition(
 def run_gpu_task(task: TaskRecord, operation: Callable[[], None], *, log_path: Optional[Path] = None) -> TaskRecord:
     """Execute a synchronous GPU operation under the project-wide lock."""
     try_acquire_gpu()
-    current = transition(task, TaskStatus.RUNNING, stage=task.stage, log_path=log_path)
     try:
-        operation()
-    except AppError as exc:
-        return transition(current, TaskStatus.FAILED, message=exc.message, stage=exc.stage or current.stage)
-    except Exception as exc:  # keep task state observable for unexpected subprocess errors
-        return transition(current, TaskStatus.FAILED, message=str(exc))
+        current = transition(task, TaskStatus.RUNNING, stage=task.stage, log_path=log_path)
+        try:
+            operation()
+        except AppError as exc:
+            return transition(current, TaskStatus.FAILED, message=exc.message, stage=exc.stage or current.stage)
+        except Exception as exc:  # keep task state observable for unexpected subprocess errors
+            return transition(current, TaskStatus.FAILED, message=str(exc))
+        return transition(current, TaskStatus.SUCCEEDED, message="任务完成")
     finally:
         release_gpu()
-    return transition(current, TaskStatus.SUCCEEDED, message="任务完成")
 
 
 def list_tasks(index_path: Path = TASK_INDEX) -> List[TaskRecord]:
@@ -111,6 +112,39 @@ def try_acquire_gpu() -> None:
 def release_gpu() -> None:
     if _gpu_lock.locked():
         _gpu_lock.release()
+
+
+def is_gpu_busy() -> bool:
+    return _gpu_lock.locked()
+
+
+def task_log_summary(task: Optional[TaskRecord]) -> tuple:
+    if task is None or task.log_path is None:
+        return [], "暂无日志。"
+    root = (PROJECT_ROOT / "data" / "logs").resolve()
+    path = task.log_path.resolve()
+    if not path.is_relative_to(root):
+        return [], "日志位于项目日志目录之外，未在页面读取。"
+    try:
+        if not path.is_file():
+            return [], "当前阶段尚未写入日志。"
+        with path.open("rb") as handle:
+            handle.seek(max(0, path.stat().st_size - 12000))
+            tail = handle.read(12000).decode("utf-8", errors="replace")
+        stages = []
+        prefix = task.task_id + "-"
+        files = sorted((item for item in path.parent.iterdir()
+                        if item.name.startswith(prefix) and item.suffix == ".log" and item.is_file()
+                        and item.resolve().is_relative_to(root)), key=lambda item: item.stat().st_mtime_ns)
+        for item in files:
+            with item.open("r", encoding="utf-8", errors="replace") as handle:
+                header = handle.read(4096)
+            fields = dict(line.split(": ", 1) for line in header.partition("\nSTDOUT:")[0].splitlines() if ": " in line)
+            stages.append([fields.get("STAGE", item.stem), fields.get("EXIT CODE", "未记录"),
+                           fields.get("NOTE", fields.get("OUTPUT CHECK", "")), item.name])
+        return stages, tail
+    except OSError as exc:
+        return [], f"日志暂不可读：{exc}"
 
 
 def _write_task_index(index_path: Path, records: List[TaskRecord]) -> None:

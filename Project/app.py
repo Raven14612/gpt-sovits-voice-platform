@@ -17,7 +17,9 @@ def load_css() -> str:
 
 
 def build_app() -> gr.Blocks:
-    with gr.Blocks(title="轻量级音色克隆", css=load_css()) as demo:
+    theme = gr.themes.Default(primary_hue="teal", secondary_hue="blue", neutral_hue="gray",
+                              font=["Microsoft YaHei", "Arial", "sans-serif"])
+    with gr.Blocks(title="轻量级音色克隆", css=load_css(), theme=theme) as demo:
         render_root_layout()
     demo.queue(default_concurrency_limit=1)
     return demo
@@ -25,4 +27,3 @@ def build_app() -> gr.Blocks:
 
 if __name__ == "__main__":
     build_app().launch(server_name="127.0.0.1")
-

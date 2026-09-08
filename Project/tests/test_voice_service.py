@@ -2,15 +2,20 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
 from unittest import TestCase
+from unittest.mock import patch
 
 from models.schemas import AppError, DatasetRecord, TaskStatus
 from services.task_service import get_task, list_tasks, try_acquire_gpu, release_gpu
-from services.voice_service import get_voice_profile, train_voice
+from services.voice_service import (
+    _archive_weight, _checkpoint_snapshot, _require_checkpoint_change,
+    _validate_voice_id, get_voice_profile, train_voice,
+)
 
 
 def _real_checkpoint_paths() -> Tuple[Optional[Path], Optional[Path]]:
@@ -318,4 +323,105 @@ class VoiceServiceTests(TestCase):
                     train_voice(self._dataset(), "voice-busy", params)
                 self.assertEqual(ctx.exception.code, "GPU_BUSY")
             finally:
+                release_gpu()
+
+    def test_invalid_voice_ids_rejected_before_side_effects(self):
+        invalid = ("", ".", "..", "../outside", "..\\outside", "/absolute", "C:\\outside",
+                   "C:relative", "voice/child", "voice\\child", "voice:stream", "CON", "nul.txt",
+                   "LPT1", "COM1.ckpt", "voice.", "voice ", "bad\x00id", "bad?name")
+        with patch("services.voice_service.PipelineRunner") as runner:
+            for voice_id in invalid:
+                with self.subTest(voice_id=voice_id), self.assertRaises(AppError) as ctx:
+                    train_voice(self._dataset(), voice_id, {})
+                self.assertEqual(ctx.exception.code, "INVALID_VOICE_ID")
+            runner.assert_not_called()
+        for voice_id in ("citlali", "voice-success", "音色一"):
+            _validate_voice_id(voice_id)
+
+    def test_archive_rejects_directory_junction_escape(self):
+        archive = self.root / "archive"
+        outside = self.root / "outside"
+        archive.mkdir()
+        outside.mkdir()
+        link = archive / "voice"
+        if os.name == "nt":
+            subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)], check=True, capture_output=True)
+        else:
+            link.symlink_to(outside, target_is_directory=True)
+        source = self._source_file("source.txt")
+        try:
+            with self.assertRaises(AppError) as ctx:
+                _archive_weight(source, archive, "voice")
+            self.assertEqual(ctx.exception.code, "OUTPUT_INVALID")
+            self.assertEqual(list(outside.iterdir()), [])
+        finally:
+            if os.name == "nt":
+                link.rmdir()
+            else:
+                link.unlink()
+
+    def test_archive_rejects_existing_target_link_escape(self):
+        archive = self.root / "archive"
+        source = self._source_file("source.txt")
+        outside = self._source_file("outside.txt")
+        target = archive / "voice" / source.name
+        target.parent.mkdir(parents=True)
+        original_resolve = Path.resolve
+
+        def resolve(path, *args, **kwargs):
+            if path == target:
+                return outside
+            return original_resolve(path, *args, **kwargs)
+
+        # Windows file symlinks can require admin rights; model only the resolved link.
+        with patch.object(Path, "resolve", resolve):
+            with self.assertRaises(AppError) as ctx:
+                _archive_weight(source, archive, "voice")
+        self.assertEqual(ctx.exception.code, "OUTPUT_INVALID")
+        self.assertEqual(outside.read_text(encoding="utf-8"), "stage-input")
+
+    def test_snapshot_detects_content_change_with_preserved_metadata(self):
+        source = self._source_file("snapshot.bin")
+        before = _checkpoint_snapshot(source, [self.root])
+        original = source.stat()
+        source.write_text("stage-other", encoding="utf-8")
+        os.utime(source, ns=(original.st_atime_ns, original.st_mtime_ns))
+        self.assertEqual(source.stat().st_size, original.st_size)
+        _require_checkpoint_change(source, [self.root], before)
+
+    def test_snapshot_rejects_timestamp_only_change(self):
+        source = self._source_file("snapshot.bin")
+        before = _checkpoint_snapshot(source, [self.root])
+        original = source.stat()
+        os.utime(source, ns=(original.st_atime_ns, original.st_mtime_ns + 10_000_000_000))
+        with self.assertRaises(AppError) as ctx:
+            _require_checkpoint_change(source, [self.root], before)
+        self.assertEqual(ctx.exception.code, "OUTPUT_STALE")
+
+    def test_existing_real_weights_cannot_report_new_training_success(self):
+        gpt, sovits = _real_checkpoint_paths()
+        if gpt is None or sovits is None or not gpt.is_file() or not sovits.is_file():
+            self.skipTest("real checkpoint fixtures are unavailable")
+        for stale in ("gpt", "sovits", "both"):
+            with self.subTest(stale=stale), TemporaryDirectory() as directory:
+                root = Path(directory)
+                params = self._plan(
+                    voice_id="stale", gpt_mode="skip" if stale in ("gpt", "both") else "copy",
+                    sovits_mode="skip" if stale in ("sovits", "both") else "copy",
+                    gpt_output=root / "gpt.ckpt", sovits_output=root / "sovits.pth",
+                    task_index=root / "tasks.json", voice_index=root / "voices.json",
+                    archive_root=root / "archive", log_dir=root / "logs",
+                )
+                if stale in ("gpt", "both"):
+                    shutil.copy2(gpt, params["gpt_weight_path"])
+                if stale in ("sovits", "both"):
+                    shutil.copy2(sovits, params["sovits_weight_path"])
+                result = train_voice(self._dataset(), "stale", params)
+                self.assertEqual(result.status, TaskStatus.FAILED)
+                self.assertEqual(result.stage, "packaging")
+                self.assertIn("本次训练未生成新的权重内容", result.message)
+                self.assertEqual(get_task(result.task_id, params["task_index"]).status, TaskStatus.FAILED)
+                self.assertIsNone(get_voice_profile("stale", params["voice_index"]))
+                self.assertFalse(params["archive_root"].exists())
+                try_acquire_gpu()
                 release_gpu()
