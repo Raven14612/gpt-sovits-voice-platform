@@ -3,9 +3,9 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from models.schemas import AppError, DatasetRecord
+from models.schemas import AppError, DatasetRecord, TaskRecord, TaskStatus
 from services import dataset_service
-from ui.audio_page import save_table, submit_audio, update_slice
+from ui.audio_page import run_audio_submission, save_table, submit_audio, update_slice
 
 
 class AudioPageTests(TestCase):
@@ -41,13 +41,37 @@ class AudioPageTests(TestCase):
             self.assertEqual(ctx.exception.code, "INVALID_AUDIO")
             self.assertFalse((root / "data").exists())
 
-    def test_audio_submit_reports_unimplemented_without_success(self):
+    def test_audio_submit_reports_engine_error_without_success(self):
         record = DatasetRecord(dataset_id="d", display_name="test", source_path=Path("input.wav"))
-        with patch("ui.audio_page.dataset_service.get_dataset", return_value=record):
+        with patch("ui.audio_page.dataset_service.get_dataset", return_value=record), patch(
+            "ui.audio_page.audio_service.process_audio", side_effect=AppError("ENGINE_UNAVAILABLE", "入口缺失", stage="audio")
+        ):
             task, message = submit_audio("d", 0, None)
             self.assertEqual(task, {"__type__": "update"})
-            self.assertIn("NOT_IMPLEMENTED", message)
+            self.assertIn("ENGINE_UNAVAILABLE", message)
             self.assertIn("INVALID_AUDIO", submit_audio("d", 5, 2)[1])
+
+    def test_submission_exposes_task_before_work_and_clears_pending_state(self):
+        record = DatasetRecord(dataset_id="d", display_name="test", source_path=Path("input.wav"))
+        for to_end in (False, True):
+            with patch("ui.audio_page.dataset_service.get_dataset", return_value=record), patch(
+                "ui.audio_page.audio_service.process_audio"
+            ) as process:
+                stream = run_audio_submission("d", 1, 3, to_end)
+                pending = next(stream)
+                self.assertTrue(pending[1])
+                self.assertFalse(pending[3]["interactive"])
+                process.assert_not_called()
+                process.return_value = TaskRecord(task_id=pending[0], kind="process_audio", status=TaskStatus.SUCCEEDED)
+                final = next(stream)
+                self.assertFalse(final[1])
+                self.assertEqual(final[0], pending[0])
+                self.assertEqual(final[2], "")
+                self.assertEqual(process.call_args.args[1]["end"], None if to_end else 3)
+        with patch("ui.audio_page.submit_audio", side_effect=RuntimeError("failure detail")):
+            states = list(run_audio_submission("d", 0, 3, True))
+            self.assertFalse(states[-1][1])
+            self.assertIn("failure detail", states[-1][2])
 
     def test_unsaved_row_and_failed_save_are_explicit(self):
         rows = [["slice.wav", "文本", "neutral"]]

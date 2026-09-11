@@ -4,7 +4,7 @@ import gradio as gr
 
 from services.engine_service import probe_engine
 from ui.audio_page import render_audio_page
-from ui.result_page import render_result_page, result_choices
+from ui.result_page import refresh_results, render_result_page
 from ui.tts_page import render_tts_page
 from ui.voice_page import render_voice_page, voice_choices
 from ui.audio_page import dataset_choices
@@ -49,7 +49,7 @@ def render_root_layout() -> None:
             with gr.Column(visible=False) as tts_page:
                 tts_voices = render_tts_page(state)
             with gr.Column(visible=False) as result_page:
-                results = render_result_page(state)
+                results, result_audio, result_message = render_result_page(state)
 
             with gr.Accordion("任务与日志", open=True):
                 task_picker = gr.Dropdown(label="已保存任务", choices=[], interactive=True)
@@ -71,4 +71,5 @@ def render_root_layout() -> None:
     state["selected_voice"].change(lambda value: (gr.update(choices=voice_choices(), value=value), gr.update(choices=voice_choices(), value=value)),
                                    state["selected_voice"], [voices, tts_voices], queue=False, show_progress="hidden")
     tts_button.click(lambda value: gr.update(choices=voice_choices(), value=value), state["selected_voice"], tts_voices, queue=False, show_progress="hidden")
-    result_button.click(lambda value: gr.update(choices=result_choices(), value=value), state["current_result"], results, queue=False, show_progress="hidden")
+    result_button.click(refresh_results, state["current_result"],
+                        [results, result_audio, result_message], queue=False, show_progress="hidden")

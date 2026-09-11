@@ -122,6 +122,7 @@ class DatasetRecord(CompatBaseModel):
     slice_dir: Optional[Path] = None
     list_path: Optional[Path] = None
     emotions_path: Optional[Path] = None
+    feature_manifest: Optional[Path] = None
     status: str = "created"
     created_at: datetime = Field(default_factory=utc_now)
 

@@ -1,4 +1,4 @@
-# Week 2 50 系阶段验收（开发推进中）
+# Week 2 50 系阶段验收（当前状态）
 
 | 节点 | 产物 | 结论 | 下一步 |
 |---|---|---|---|
@@ -18,3 +18,27 @@
 2026-09-08 更新：配置 Citlali 真实权重路径后，unittest 36/36 通过，无跳过；compileall 和核心模块导入通过。详见 `LHY-week2-risk-fixes.md`。测试使用临时副本验证编排与归档，不代表重新执行了模型训练；用户已确认整合包真实训练、生成和听感正常。
 
 同日 WGX 代执行后新增 UI/数据保存/结果路径测试，最新验证见 `WGX-week2-browser-smoke.md`。真实数据处理与训练尚不能从项目页面一键跑通，Week 2 整体业务闭环仍待后端接线；这不影响 WGX 按明确未接入提示的节点验收通过。
+
+## 2026-09-11 复核
+
+- `python -m unittest discover -v`：64 项通过，11 项因真实音频/权重 fixture 不在当前测试环境而跳过；无失败。
+- 项目代码可编译，训练准备、任务持久化、GPU 串行锁、音频处理和 UI 边界均已具备。
+- Week 2 尚未整体完成：`services/voice_service.py` 仍要求显式 GPT/SoVITS stage command，`services/tts_service.py` 仍返回 `NOT_IMPLEMENTED`。因此项目页面尚不能完成“训练 → 权重归档 → 项目内合成 → WAV 校验”的真实闭环。
+- 外部 50 系整合包的真实训练、生成和听感确认已有记录，但不能替代项目内端到端验证。
+
+### 剩余阻塞项
+
+1. 在 `config/engine.local.json` 中登记经验证的训练 stage command 和输出路径规则，并由项目任务编排真实调用。
+2. 实现项目级合成 service/adapter 调用整合包 API，生成并校验全新 WAV。
+3. 以新生成 WAV 完成 VoiceProfile 归档、历史记录写入和页面回归。
+4. 完成上述闭环后再将本文件结论改为“Week 2 完成”，并开始 Week 3 计划。
+
+## 2026-09-11 真实闭环更新
+
+训练命令、动态 checkpoint 检测、项目权重归档和归档后真实合成均已通过。真实回归为 70/70 通过、无跳过；详细证据见 `Week2-training-archive-closure-20260911.md`。
+
+当前技术阻塞项已经清零。用户于 2026-09-11 确认 `data/outputs/tts-5701909348ae48ec86aba29be7df133f.wav` 听感完全正常。
+
+## 最终结论
+
+**Week 2 全部完成，通过验收。** 数据、真实训练、新 checkpoint 检测、项目权重归档、音色档案、项目合成、WAV 校验和人工听感均已闭环。后续工作按 `Documents/Week3安排.md` 执行。

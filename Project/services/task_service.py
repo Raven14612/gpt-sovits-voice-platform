@@ -5,7 +5,7 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Lock
+from threading import Lock, RLock
 from typing import Callable, List, Optional
 
 from models.schemas import AppError, TaskRecord, TaskStatus
@@ -14,6 +14,24 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TASK_INDEX = PROJECT_ROOT / "data" / "index" / "tasks.json"
 
 _gpu_lock = Lock()
+_index_lock = RLock()
+
+def relative_path(path: Path | None) -> str:
+    if path is None: return ""
+    try: return Path(path).resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+    except ValueError: return Path(path).resolve().as_posix()
+
+def _runtime_task(record: TaskRecord) -> TaskRecord:
+    if record.log_path and not record.log_path.is_absolute():
+        return record.model_copy(update={"log_path": (PROJECT_ROOT / record.log_path).resolve()})
+    return record
+
+def _stored_task(record: TaskRecord) -> dict:
+    data = record.model_dump(mode="json")
+    if data.get("log_path"):
+        try: data["log_path"] = Path(data["log_path"]).resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+        except ValueError: data["log_path"] = Path(data["log_path"]).as_posix()
+    return data
 _TERMINAL = {TaskStatus.SUCCEEDED, TaskStatus.FAILED, TaskStatus.CANCELLED}
 _ALLOWED = {
     TaskStatus.PENDING: {TaskStatus.RUNNING, TaskStatus.CANCELLED},
@@ -62,13 +80,17 @@ def run_gpu_task(task: TaskRecord, operation: Callable[[], None], *, log_path: O
         release_gpu()
 
 
-def list_tasks(index_path: Path = TASK_INDEX) -> List[TaskRecord]:
+def list_tasks(index_path: Path = TASK_INDEX, *, strict: bool = False) -> List[TaskRecord]:
     if not index_path.is_file():
         return []
     try:
         raw = json.loads(index_path.read_text(encoding="utf-8"))
-        return [TaskRecord.model_validate(item) for item in raw] if isinstance(raw, list) else []
-    except (OSError, ValueError, json.JSONDecodeError):
+        if not isinstance(raw, list):
+            raise ValueError("task index must be a list")
+        return [_runtime_task(TaskRecord.model_validate(item)) for item in raw]
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        if strict:
+            raise AppError("TASK_INDEX_INVALID", "任务索引损坏或无法读取，已停止写入以保留原文件。") from exc
         return []
 
 
@@ -77,24 +99,30 @@ def get_task(task_id: str, index_path: Path = TASK_INDEX) -> Optional[TaskRecord
 
 
 def upsert_task(record: TaskRecord, index_path: Path = TASK_INDEX) -> TaskRecord:
-    records = [item for item in list_tasks(index_path) if item.task_id != record.task_id]
-    records.append(record)
-    _write_task_index(index_path, records)
+    with _index_lock:
+        records = [item for item in list_tasks(index_path, strict=True) if item.task_id != record.task_id]
+        records.append(record)
+        _write_task_index(index_path, records)
     return record
 
 
 def recover_tasks(index_path: Path = TASK_INDEX) -> List[TaskRecord]:
-    records = list_tasks(index_path)
+    with _index_lock:
+        return _recover_tasks(index_path)
+
+
+def _recover_tasks(index_path):
+    records = list_tasks(index_path, strict=True)
     recovered: List[TaskRecord] = []
     changed = False
     for record in records:
-        if record.status == TaskStatus.RUNNING:
+        if record.status in {TaskStatus.RUNNING, TaskStatus.PENDING}:
             changed = True
             recovered.append(
                 transition(
                     record,
-                    TaskStatus.FAILED,
-                    message="服务重启后无法恢复运行中的任务。",
+                    TaskStatus.FAILED if record.status == TaskStatus.RUNNING else TaskStatus.CANCELLED,
+                    message="服务重启后任务不会自动重放，请检查日志后重新提交。",
                 )
             )
         else:
@@ -152,7 +180,7 @@ def _write_task_index(index_path: Path, records: List[TaskRecord]) -> None:
     fd, temp_name = tempfile.mkstemp(prefix="tasks-", suffix=".json", dir=index_path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump([item.model_dump(mode="json") for item in records], handle, ensure_ascii=False, indent=2)
+            json.dump([_stored_task(item) for item in records], handle, ensure_ascii=False, indent=2)
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())

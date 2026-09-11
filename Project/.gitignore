@@ -18,6 +18,7 @@ data/voices/*
 data/outputs/*
 !data/outputs/.gitkeep
 data/logs/*
+data/training/
 !data/logs/.gitkeep
 
 *.ckpt
@@ -25,4 +26,3 @@ data/logs/*
 *.wav
 *.mp3
 *.flac
-

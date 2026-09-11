@@ -1,0 +1,5 @@
+{
+  "status": "状态：成功\n1 个切片的 BERT、HuBERT、SV 和语义特征已完成；尚未训练。\n阶段：feature_semantic\n日志：D:\\Documents\\InternAssignments\\Project\\data\\logs\\features\\features-f042d77d3b7a48d59a85c3a7d809a556-feature_semantic.log",
+  "errors": [],
+  "trainingStarted": false
+}

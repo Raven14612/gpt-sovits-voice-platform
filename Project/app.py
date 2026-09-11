@@ -5,6 +5,7 @@ from pathlib import Path
 import gradio as gr
 
 from ui.layout import render_root_layout
+from services.task_service import recover_tasks
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 CSS_PATH = PROJECT_ROOT / "assets" / "theme.css"
@@ -26,4 +27,5 @@ def build_app() -> gr.Blocks:
 
 
 if __name__ == "__main__":
+    recover_tasks()
     build_app().launch(server_name="127.0.0.1")

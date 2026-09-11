@@ -1,8 +1,12 @@
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 from models.schemas import AppError
 
 from services.history_service import get_result_output, list_history
+from models.schemas import GenerationRecord
+from services import history_service
 
 
 class HistoryServiceTests(TestCase):
@@ -17,3 +21,18 @@ class HistoryServiceTests(TestCase):
                     get_result_output("r")
                 self.assertEqual(ctx.exception.code, "OUTPUT_INVALID")
                 self.assertIsNone(get_result_output("missing"))
+
+    def test_add_history_stores_project_relative_output(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "data" / "outputs" / "result.wav"
+            output.parent.mkdir(parents=True)
+            output.write_bytes(b"RIFF")
+            index = root / "data" / "index" / "history.json"
+            record = GenerationRecord(result_id="r", voice_id="v", text="测试", output_path=output,
+                                      status="succeeded")
+            with patch.object(history_service, "PROJECT_ROOT", root), \
+                    patch.object(history_service, "HISTORY_INDEX", index):
+                history_service.add_history(record)
+                saved = history_service.list_history()[0]
+            self.assertEqual(saved["output_path"], "data/outputs/result.wav")

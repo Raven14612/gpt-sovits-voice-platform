@@ -1,2 +1,35 @@
-[]
-
+[
+  {
+    "result_id": "tts-2a425a7cf354426c945fe7a6b6dc4c00",
+    "voice_id": "citlali",
+    "text": "天哪，你是夜之城的传奇对吧",
+    "emotion": "neutral",
+    "speed_factor": 1.0,
+    "fragment_interval": 0.3,
+    "output_path": "data/outputs/tts-2a425a7cf354426c945fe7a6b6dc4c00.wav",
+    "status": "succeeded",
+    "created_at": "2026-09-11T01:49:23.589354Z"
+  },
+  {
+    "result_id": "tts-71d0da49935842409a8dd376ca71a489",
+    "voice_id": "citlali",
+    "text": "你就是那个夜之城的传奇对吧",
+    "emotion": "neutral",
+    "speed_factor": 1.0,
+    "fragment_interval": 0.3,
+    "output_path": "data/outputs/tts-71d0da49935842409a8dd376ca71a489.wav",
+    "status": "succeeded",
+    "created_at": "2026-09-11T01:54:41.519918Z"
+  },
+  {
+    "result_id": "tts-5701909348ae48ec86aba29be7df133f",
+    "voice_id": "buer-w2-project",
+    "text": "雨林的巡护者已经准备好了。",
+    "emotion": "neutral",
+    "speed_factor": 1.0,
+    "fragment_interval": 0.3,
+    "output_path": "data/outputs/tts-5701909348ae48ec86aba29be7df133f.wav",
+    "status": "succeeded",
+    "created_at": "2026-09-11T02:08:52.964007Z"
+  }
+]

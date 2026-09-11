@@ -10,14 +10,16 @@ from ui.voice_page import submit_training, voice_rows
 
 
 class UITaskTests(TestCase):
-    def test_training_without_engine_commands_is_not_success(self):
+    def test_training_without_features_is_not_started(self):
         dataset = DatasetRecord(dataset_id="d", display_name="d", source_path=Path("source.wav"), status="reviewed")
-        with patch("ui.voice_page.dataset_service.get_dataset", return_value=dataset):
+        with patch("ui.voice_page.dataset_service.get_dataset", return_value=dataset), \
+                patch("ui.voice_page.voice_service.train_voice") as train:
             updates = list(submit_training("d", "valid-id", "音色"))
         self.assertTrue(updates[0][1])
         self.assertFalse(updates[-1][1])
         self.assertIsNone(updates[-1][0])
-        self.assertIn("NOT_IMPLEMENTED", updates[-1][2])
+        self.assertIn("DATASET_NOT_READY", updates[-1][2])
+        train.assert_not_called()
 
     def test_training_rejects_unreviewed_dataset(self):
         dataset = DatasetRecord(dataset_id="d", display_name="d", source_path=Path("source.wav"))

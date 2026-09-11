@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import gradio as gr
+from uuid import uuid4
 
 from models.schemas import AppError
 from services import audio_service, dataset_service
-from ui.task_status import error_text
+from ui.task_status import error_text, task_status_text
 
 
 def dataset_choices():
@@ -20,7 +21,7 @@ def select_dataset(dataset_id):
         if record is None:
             raise AppError("DATASET_MISSING", "数据集已不存在，请刷新列表。")
         rows = dataset_service.load_corrections(dataset_id)
-        return dataset_id, str(record.source_path), rows, None, f"{record.display_name} · {record.status}"
+        return dataset_id, dataset_service.relative_path(record.source_path), rows, None, f"{record.display_name} · {record.status}"
     except AppError as exc:
         return dataset_id, "", [], None, error_text(exc)
 
@@ -64,17 +65,32 @@ def update_slice(rows, selected, text, emotion):
     return updated, "切片已更新，尚未保存。"
 
 
-def submit_audio(dataset_id, start, end):
+def submit_audio(dataset_id, start, end, task_id=None):
     try:
         record = dataset_service.get_dataset(dataset_id)
         if record is None:
             raise AppError("DATASET_MISSING", "请先导入或选择数据集。")
         if start is None or start < 0 or (end is not None and end <= start):
             raise AppError("INVALID_AUDIO", "保留终点必须大于起点；留空表示音频结尾。")
-        task = audio_service.process_audio(record, {"start": start, "end": end})
-        return task.task_id, "任务已提交。"
+        task = audio_service.process_audio(record, {"start": start, "end": end, "task_id": task_id})
+        return task.task_id, task_status_text(task)
     except (AppError, OSError) as exc:
         return gr.skip(), error_text(exc)
+
+
+def run_audio_submission(dataset_id, start, end, to_end):
+    task_id = "audio-" + uuid4().hex
+    yield task_id, True, "正在提交音频处理。", gr.update(interactive=False)
+    try:
+        returned_id, message = submit_audio(dataset_id, start, None if to_end else end, task_id)
+        yield returned_id, False, "" if returned_id == task_id else message, gr.update()
+    except Exception as exc:
+        yield task_id, False, error_text(exc), gr.update()
+
+
+def reload_processed_dataset(dataset_id):
+    selected, source, rows, selected_slice, message = select_dataset(dataset_id)
+    return gr.update(choices=dataset_choices(), value=selected), source, rows, selected_slice, message
 
 
 def render_audio_page(state):
@@ -122,6 +138,9 @@ def render_audio_page(state):
     apply.click(update_slice, [table, state["selected_slice"], text, emotion], [table, message])
     save.click(save_table, [state["selected_dataset"], table], message)
     to_end.change(lambda value: gr.update(interactive=not value), to_end, end)
-    submit.click(lambda dataset_id, start, end, to_end: submit_audio(dataset_id, start, None if to_end else end),
-                 [state["selected_dataset"], start, end, to_end], [state["active_task"], state["notice"]])
+    submit.click(run_audio_submission, [datasets, start, end, to_end],
+                 [state["active_task"], state["submitting"], state["notice"], submit],
+                 concurrency_id="model-submit", show_progress="hidden").then(
+        reload_processed_dataset, datasets, [datasets, source, table, state["selected_slice"], message]).then(
+        lambda: ("", "", "neutral"), outputs=[selected_path, text, emotion])
     return datasets, submit

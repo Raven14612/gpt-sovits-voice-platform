@@ -4,7 +4,7 @@ import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Mapping, Optional
 
 from models.schemas import AppError, TaskRecord, TaskStatus
 from services.task_service import release_gpu, transition, try_acquire_gpu
@@ -66,6 +66,7 @@ class PipelineRunner:
         timeout: int = 3600,
         gpu: bool = True,
         final: bool = True,
+        env: Optional[Mapping[str, str]] = None,
     ) -> TaskRecord:
         log_path = self.log_dir / ("%s-%s.log" % (task.task_id, stage))
         acquired_gpu = False
@@ -90,6 +91,7 @@ class PipelineRunner:
             completed = subprocess.run(
                 list(command),
                 cwd=cwd,
+                env=env,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",

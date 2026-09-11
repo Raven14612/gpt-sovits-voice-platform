@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 import wave
+from threading import RLock
 from pathlib import Path
 from typing import List, Optional
 from uuid import uuid4
@@ -14,15 +15,42 @@ from models.schemas import AppError, DatasetRecord
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASET_INDEX = PROJECT_ROOT / "data" / "index" / "datasets.json"
 DATASET_ROOT = PROJECT_ROOT / "data" / "datasets"
+_index_lock = RLock()  # One Gradio process, multiple callback threads.
+
+def _runtime_path(value):
+    if value is None: return None
+    path = Path(value)
+    return path if path.is_absolute() else (PROJECT_ROOT / path).resolve()
+
+def _runtime_record(record: DatasetRecord) -> DatasetRecord:
+    return record.model_copy(update={key: _runtime_path(getattr(record, key)) for key in
+        ("source_path", "slice_dir", "list_path", "emotions_path", "feature_manifest")})
+
+def _stored_record(record: DatasetRecord) -> dict:
+    data = record.model_dump(mode="json")
+    for key in ("source_path", "slice_dir", "list_path", "emotions_path", "feature_manifest"):
+        if data.get(key):
+            try: data[key] = Path(data[key]).resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+            except ValueError: data[key] = Path(data[key]).as_posix()
+    return data
+
+def relative_path(path: Path | None) -> str:
+    if path is None: return ""
+    try: return Path(path).resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+    except ValueError: return Path(path).resolve().as_posix()
 
 
-def list_datasets(index_path: Path = DATASET_INDEX) -> List[DatasetRecord]:
+def list_datasets(index_path: Path = DATASET_INDEX, *, strict: bool = False) -> List[DatasetRecord]:
     if not index_path.is_file():
         return []
     try:
         raw = json.loads(index_path.read_text(encoding="utf-8"))
-        return [DatasetRecord.model_validate(item) for item in raw] if isinstance(raw, list) else []
-    except (OSError, ValueError, json.JSONDecodeError):
+        if not isinstance(raw, list):
+            raise ValueError("dataset index must be a list")
+        return [_runtime_record(DatasetRecord.model_validate(item)) for item in raw]
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        if strict:
+            raise AppError("DATASET_INDEX_INVALID", "数据集索引损坏或无法读取，已停止写入以保留原文件。") from exc
         return []
 
 
@@ -31,13 +59,19 @@ def get_dataset(dataset_id: str, index_path: Path = DATASET_INDEX) -> Optional[D
 
 
 def upsert_dataset(record: DatasetRecord, index_path: Path = DATASET_INDEX) -> DatasetRecord:
-    records = [item for item in list_datasets(index_path) if item.dataset_id != record.dataset_id]
-    records.append(record)
+    with _index_lock:
+        records = [item for item in list_datasets(index_path, strict=True) if item.dataset_id != record.dataset_id]
+        records.append(record)
+        _write_index(index_path, records)
+    return record
+
+
+def _write_index(index_path, records):
     index_path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix="datasets-", suffix=".json", dir=index_path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump([item.model_dump(mode="json") for item in records], handle, ensure_ascii=False, indent=2)
+            json.dump([_stored_record(item) for item in records], handle, ensure_ascii=False, indent=2)
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
@@ -45,19 +79,23 @@ def upsert_dataset(record: DatasetRecord, index_path: Path = DATASET_INDEX) -> D
     finally:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
-    return record
 
 
 def delete_dataset(dataset_id: str, index_path: Path = DATASET_INDEX) -> bool:
-    records = list_datasets(index_path)
-    kept = [item for item in records if item.dataset_id != dataset_id]
-    if len(kept) == len(records):
-        return False
-    index_path.parent.mkdir(parents=True, exist_ok=True)
-    temp = index_path.with_suffix(".tmp")
-    temp.write_text(json.dumps([item.model_dump(mode="json") for item in kept], ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(temp, index_path)
-    return True
+    with _index_lock:
+        records = list_datasets(index_path, strict=True)
+        kept = [item for item in records if item.dataset_id != dataset_id]
+        if len(kept) == len(records):
+            return False
+        _write_index(index_path, kept)
+        return True
+
+
+def attach_features(expected: DatasetRecord, manifest: Path, index_path: Path = DATASET_INDEX):
+    with _index_lock:
+        if get_dataset(expected.dataset_id, index_path) != expected:
+            raise AppError("DATASET_CHANGED", "特征提取期间数据集已更新，请重新提取。")
+        return upsert_dataset(expected.model_copy(update={"feature_manifest": manifest}), index_path)
 
 
 def import_audio(source: str, display_name: str, *, index_path: Path = DATASET_INDEX,
@@ -167,7 +205,7 @@ def _save_transcript(record, lines, emotions, status, index_path, data_root):
         transcript.write_text("\n".join("|".join(row) for row in lines) + "\n", encoding="utf-8")
         labels.write_text(json.dumps(emotions, ensure_ascii=False, indent=2), encoding="utf-8")
         return upsert_dataset(record.model_copy(update={
-            "list_path": transcript, "emotions_path": labels, "status": status,
+            "list_path": transcript, "emotions_path": labels, "status": status, "feature_manifest": None,
         }), index_path)
     except Exception:
         shutil.rmtree(directory)

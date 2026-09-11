@@ -50,12 +50,14 @@ async function main() {
     if (audio && list) {
       await page.locator('#audio-upload input[type=file]').setInputFiles(audio);
       await expect(page.locator('#audio-upload')).toContainText(path.basename(audio, '.wav'));
+      await expect(page.getByRole('button', { name: '播放', exact: true }).first()).toBeVisible({ timeout: 30000 });
+      await expect(page.locator('.pending:visible, .generating:visible')).toHaveCount(0);
       await page.getByRole('textbox', { name: '数据集名称', exact: true }).fill('WGX 浏览器验证 临时数据集 长中文名称用于确认换行与页面布局');
       await page.getByRole('button', { name: '保存音频', exact: true }).click();
       await expect(page.getByRole('textbox', { name: '已保存音频路径', exact: true })).not.toHaveValue('', { timeout: 20000 });
       await expect(page.getByRole('button', { name: '切分并识别', exact: true })).toBeEnabled();
       await page.getByRole('button', { name: '切分并识别', exact: true }).click();
-      await expect(page.getByRole('textbox', { name: '任务状态', exact: true })).toHaveValue(/NOT_IMPLEMENTED/, { timeout: 15000 });
+      await expect(page.getByRole('textbox', { name: '任务状态', exact: true })).toHaveValue(/ENGINE_CONFIG_MISSING/, { timeout: 15000 });
       await screenshot('04-audio-unimplemented');
       await page.getByText('导入已有识别文本', { exact: true }).click();
       await page.locator('#transcript-upload input[type=file]').setInputFiles(list);

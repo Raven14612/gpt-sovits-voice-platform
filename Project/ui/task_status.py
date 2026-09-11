@@ -19,7 +19,7 @@ def task_status_text(task: Optional[TaskRecord]) -> str:
     }
     detail = f"\n阶段：{task.stage}" if task.stage else ""
     if task.log_path:
-        detail += f"\n日志：{task.log_path}"
+        detail += f"\n日志：{task_service.relative_path(task.log_path)}"
     return f"状态：{labels[task.status]}\n{task.message}{detail}"
 
 

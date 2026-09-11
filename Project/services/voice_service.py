@@ -18,13 +18,36 @@ VOICE_INDEX = PROJECT_ROOT / "data" / "index" / "voices.json"
 VOICE_ARCHIVE_ROOT = PROJECT_ROOT / "data" / "voices"
 DEFAULT_LOG_DIR = PROJECT_ROOT / "data" / "logs" / "training"
 
+def _runtime_profile(record: VoiceProfile) -> VoiceProfile:
+    values = {}
+    for key in ("gpt_weight", "sovits_weight"):
+        value = getattr(record, key)
+        if value and not value.is_absolute() and str(value).replace('\\', '/').startswith(('data/', 'outputs/')):
+            values[key] = (PROJECT_ROOT / value).resolve()
+    refs = [item.model_copy(update={"audio_path": (PROJECT_ROOT / item.audio_path).resolve()
+                                    if not item.audio_path.is_absolute() and str(item.audio_path).replace('\\', '/').startswith(('data/', 'outputs/')) else item.audio_path})
+            for item in record.references]
+    values["references"] = refs
+    return record.model_copy(update=values)
+
+def _stored_profile(record: VoiceProfile) -> dict:
+    data = record.model_dump(mode="json")
+    for key in ("gpt_weight", "sovits_weight"):
+        if data.get(key):
+            try: data[key] = Path(data[key]).resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+            except ValueError: data[key] = Path(data[key]).as_posix()
+    for ref in data.get("references", []):
+        try: ref["audio_path"] = Path(ref["audio_path"]).resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+        except ValueError: ref["audio_path"] = Path(ref["audio_path"]).as_posix()
+    return data
+
 
 def list_voice_profiles(index_path: Path = VOICE_INDEX) -> List[VoiceProfile]:
     if not index_path.is_file():
         return []
     try:
         raw = json.loads(index_path.read_text(encoding="utf-8"))
-        return [VoiceProfile.model_validate(item) for item in raw] if isinstance(raw, list) else []
+        return [_runtime_profile(VoiceProfile.model_validate(item)) for item in raw] if isinstance(raw, list) else []
     except (OSError, ValueError, json.JSONDecodeError):
         return []
 
@@ -58,8 +81,8 @@ def train_voice(
     if plan.gpt_command is None or plan.sovits_command is None:
         raise AppError("NOT_IMPLEMENTED", "训练引擎尚未接入，缺少 GPT/SoVITS stage command。", stage="training")
 
-    _archive_target(plan.gpt_weight_path, plan.archive_root, voice_id)
-    _archive_target(plan.sovits_weight_path, plan.archive_root, voice_id)
+    _archive_target(Path("gpt.ckpt"), plan.archive_root, voice_id)
+    _archive_target(Path("sovits.pth"), plan.archive_root, voice_id)
     dataset_record = _coerce_dataset(dataset)
     log_dir = plan.log_dir or DEFAULT_LOG_DIR
     runner = PipelineRunner(log_dir)
@@ -79,7 +102,7 @@ def train_voice(
         current = transition(task, TaskStatus.RUNNING, stage="train_gpt", message="开始执行")
         upsert_task(current, plan.task_index)
         try:
-            gpt_before = _checkpoint_snapshot(plan.gpt_weight_path, plan.allowed_roots)
+            gpt_before = _checkpoint_state(plan.gpt_weight_path, plan.gpt_weight_glob, plan.allowed_roots)
         except (AppError, OSError) as exc:
             failed = transition(current, TaskStatus.FAILED, message=str(exc))
             upsert_task(failed, plan.task_index)
@@ -101,7 +124,7 @@ def train_voice(
         current = transition(current, TaskStatus.RUNNING, stage="train_sovits", message="开始执行")
         upsert_task(current, plan.task_index)
         try:
-            sovits_before = _checkpoint_snapshot(plan.sovits_weight_path, plan.allowed_roots)
+            sovits_before = _checkpoint_state(plan.sovits_weight_path, plan.sovits_weight_glob, plan.allowed_roots)
         except (AppError, OSError) as exc:
             failed = transition(current, TaskStatus.FAILED, message=str(exc))
             upsert_task(failed, plan.task_index)
@@ -121,10 +144,12 @@ def train_voice(
             return current
 
         try:
-            gpt_weight = _validate_checkpoint_file(plan.gpt_weight_path, plan.allowed_roots)
-            sovits_weight = _validate_checkpoint_file(plan.sovits_weight_path, plan.allowed_roots)
-            _require_checkpoint_change(gpt_weight, plan.allowed_roots, gpt_before)
-            _require_checkpoint_change(sovits_weight, plan.allowed_roots, sovits_before)
+            gpt_weight = _resolve_checkpoint(
+                plan.gpt_weight_path, plan.gpt_weight_glob, plan.allowed_roots, gpt_before
+            )
+            sovits_weight = _resolve_checkpoint(
+                plan.sovits_weight_path, plan.sovits_weight_glob, plan.allowed_roots, sovits_before
+            )
             archived_gpt = _archive_weight(gpt_weight, plan.archive_root, voice_id)
             archived_sovits = _archive_weight(sovits_weight, plan.archive_root, voice_id)
 
@@ -169,9 +194,12 @@ def _parse_training_params(params: Mapping[str, Any]) -> "_TrainingPlan":
         return _TrainingPlan(gpt_command=None)
     gpt_cwd = _as_path(params.get("gpt_cwd"), "gpt_cwd")
     gpt_outputs = _as_paths(params.get("gpt_outputs"), "gpt_outputs")
-    if not gpt_outputs and params.get("gpt_weight_path") is None:
+    gpt_weight_glob = _optional_checkpoint_glob(params.get("gpt_weight_glob"), "gpt_weight_glob")
+    if not gpt_outputs and params.get("gpt_weight_path") is None and gpt_weight_glob is None:
         raise AppError("NOT_IMPLEMENTED", "训练引擎尚未接入，缺少 GPT stage output path。", stage="train_gpt")
-    gpt_weight_path = _as_path(params.get("gpt_weight_path", gpt_outputs[0] if gpt_outputs else None), "gpt_weight_path")
+    gpt_weight_path = (_as_path(params.get("gpt_weight_path", gpt_outputs[0] if gpt_outputs else None),
+                                "gpt_weight_path")
+                       if gpt_outputs or params.get("gpt_weight_path") is not None else None)
 
     allowed_roots = _as_paths(params.get("allowed_roots", []), "allowed_roots")
     archive_root = _as_path(params.get("archive_root", VOICE_ARCHIVE_ROOT), "archive_root")
@@ -180,7 +208,9 @@ def _parse_training_params(params: Mapping[str, Any]) -> "_TrainingPlan":
     sovits_command = _as_command(params.get("sovits_command"))
     sovits_cwd = _as_path(params.get("sovits_cwd", gpt_cwd), "sovits_cwd")
     sovits_outputs = _as_paths(params.get("sovits_outputs", []), "sovits_outputs")
-    if sovits_command is not None and not sovits_outputs and params.get("sovits_weight_path") is None:
+    sovits_weight_glob = _optional_checkpoint_glob(params.get("sovits_weight_glob"), "sovits_weight_glob")
+    if (sovits_command is not None and not sovits_outputs
+            and params.get("sovits_weight_path") is None and sovits_weight_glob is None):
         raise AppError("NOT_IMPLEMENTED", "训练引擎尚未接入，缺少 SoVITS stage output path。", stage="train_sovits")
     sovits_weight_path = _as_path(
         params.get("sovits_weight_path", sovits_outputs[0] if sovits_outputs else None),
@@ -198,11 +228,13 @@ def _parse_training_params(params: Mapping[str, Any]) -> "_TrainingPlan":
         gpt_outputs=gpt_outputs,
         gpt_timeout=int(params.get("gpt_timeout", params.get("timeout", 3600))),
         gpt_weight_path=gpt_weight_path,
+        gpt_weight_glob=gpt_weight_glob,
         sovits_command=sovits_command,
         sovits_cwd=sovits_cwd,
         sovits_outputs=sovits_outputs,
         sovits_timeout=int(params.get("sovits_timeout", params.get("timeout", 3600))),
         sovits_weight_path=sovits_weight_path,
+        sovits_weight_glob=sovits_weight_glob,
         archive_root=archive_root,
         allowed_roots=allowed_roots,
         log_dir=_optional_path(params.get("log_dir"), "log_dir") or DEFAULT_LOG_DIR,
@@ -253,6 +285,16 @@ def _optional_path(value: Any, field_name: str) -> Optional[Path]:
     if value is None:
         return None
     return _as_path(value, field_name)
+
+
+def _optional_checkpoint_glob(value: Any, field_name: str) -> Optional[str]:
+    if value is None:
+        return None
+    raw = str(value)
+    candidate = Path(raw)
+    if any(char in str(candidate.parent) for char in "*?[]") or not any(char in candidate.name for char in "*?["):
+        raise AppError("OUTPUT_INVALID", f"{field_name} 必须只在文件名中包含通配符。", stage="training")
+    return str(candidate.parent.expanduser().resolve() / candidate.name)
 
 
 def _validate_checkpoint_file(path: Path, allowed_roots: Sequence[Path]) -> Path:
@@ -337,6 +379,39 @@ def _require_checkpoint_change(path: Path, allowed_roots: Sequence[Path], before
         raise AppError("OUTPUT_STALE", f"本次训练未生成新的权重内容：{path}", stage="packaging")
 
 
+def _checkpoint_state(path: Optional[Path], pattern: Optional[str],
+                      allowed_roots: Sequence[Path]) -> dict:
+    candidates = [path] if path is not None and path.exists() else []
+    if pattern:
+        parent, name = Path(pattern).parent.resolve(), Path(pattern).name
+        if not _is_allowed_path(parent, allowed_roots):
+            raise AppError("OUTPUT_INVALID", f"权重路径不在允许范围内：{parent}", stage="packaging")
+        candidates.extend(item for item in parent.glob(name) if item.is_file())
+    return {str(item.resolve()): _checkpoint_snapshot(item, allowed_roots) for item in candidates}
+
+
+def _resolve_checkpoint(path: Optional[Path], pattern: Optional[str], allowed_roots: Sequence[Path],
+                        before: Mapping[str, Optional[str]]) -> Path:
+    if path is not None:
+        candidate = _validate_checkpoint_file(path, allowed_roots)
+        _require_checkpoint_change(candidate, allowed_roots, before.get(str(candidate.resolve())))
+        return candidate
+    if not pattern:
+        raise AppError("VOICE_WEIGHTS_MISSING", "训练未配置权重输出。", stage="packaging")
+    parent, name = Path(pattern).parent.resolve(), Path(pattern).name
+    if not _is_allowed_path(parent, allowed_roots):
+        raise AppError("OUTPUT_INVALID", f"权重路径不在允许范围内：{parent}", stage="packaging")
+    changed = []
+    for candidate in parent.glob(name):
+        valid = _validate_checkpoint_file(candidate, allowed_roots)
+        digest = _checkpoint_snapshot(valid, allowed_roots)
+        if digest != before.get(str(valid.resolve())):
+            changed.append(valid)
+    if not changed:
+        raise AppError("OUTPUT_STALE", f"本次训练未生成新的匹配权重：{pattern}", stage="packaging")
+    return max(changed, key=lambda item: item.stat().st_mtime_ns)
+
+
 def _is_allowed_path(path: Path, allowed_roots: Sequence[Path]) -> bool:
     roots = [root.expanduser().resolve() for root in allowed_roots]
     for root in roots:
@@ -355,7 +430,7 @@ def _write_json_index(index_path: Path, records: Iterable[VoiceProfile]) -> None
     fd, temp_name = tempfile.mkstemp(prefix="voices-", suffix=".json", dir=index_path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump([item.model_dump(mode="json") for item in records], handle, ensure_ascii=False, indent=2)
+            json.dump([_stored_profile(item) for item in records], handle, ensure_ascii=False, indent=2)
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
@@ -378,11 +453,13 @@ class _TrainingPlan:
         gpt_outputs: Optional[List[Path]] = None,
         gpt_timeout: int = 3600,
         gpt_weight_path: Optional[Path] = None,
+        gpt_weight_glob: Optional[str] = None,
         sovits_command: Optional[List[str]] = None,
         sovits_cwd: Optional[Path] = None,
         sovits_outputs: Optional[List[Path]] = None,
         sovits_timeout: int = 3600,
         sovits_weight_path: Optional[Path] = None,
+        sovits_weight_glob: Optional[str] = None,
         archive_root: Optional[Path] = None,
         allowed_roots: Optional[List[Path]] = None,
         log_dir: Optional[Path] = None,
@@ -399,11 +476,13 @@ class _TrainingPlan:
         self.gpt_outputs = gpt_outputs or []
         self.gpt_timeout = gpt_timeout
         self.gpt_weight_path = gpt_weight_path or (self.gpt_outputs[0] if self.gpt_outputs else None)
+        self.gpt_weight_glob = gpt_weight_glob
         self.sovits_command = sovits_command
         self.sovits_cwd = sovits_cwd or gpt_cwd
         self.sovits_outputs = sovits_outputs or []
         self.sovits_timeout = sovits_timeout
         self.sovits_weight_path = sovits_weight_path or (self.sovits_outputs[0] if self.sovits_outputs else None)
+        self.sovits_weight_glob = sovits_weight_glob
         self.archive_root = archive_root or VOICE_ARCHIVE_ROOT
         self.allowed_roots = allowed_roots or []
         self.log_dir = log_dir or DEFAULT_LOG_DIR

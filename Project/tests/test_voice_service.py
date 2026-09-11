@@ -13,7 +13,8 @@ from unittest.mock import patch
 from models.schemas import AppError, DatasetRecord, TaskStatus
 from services.task_service import get_task, list_tasks, try_acquire_gpu, release_gpu
 from services.voice_service import (
-    _archive_weight, _checkpoint_snapshot, _require_checkpoint_change,
+    _archive_weight, _checkpoint_snapshot, _checkpoint_state, _require_checkpoint_change,
+    _resolve_checkpoint,
     _validate_voice_id, get_voice_profile, train_voice,
 )
 
@@ -397,6 +398,14 @@ class VoiceServiceTests(TestCase):
         with self.assertRaises(AppError) as ctx:
             _require_checkpoint_change(source, [self.root], before)
         self.assertEqual(ctx.exception.code, "OUTPUT_STALE")
+
+    def test_checkpoint_glob_selects_new_matching_weight(self):
+        pattern = str(self.root / "voice_e8_s*.pth")
+        before = _checkpoint_state(None, pattern, [self.root])
+        output = self.root / "voice_e8_s176.pth"
+        output.write_bytes(b"\x05\x00binary-checkpoint")
+        selected = _resolve_checkpoint(None, pattern, [self.root], before)
+        self.assertEqual(selected, output)
 
     def test_existing_real_weights_cannot_report_new_training_success(self):
         gpt, sovits = _real_checkpoint_paths()

@@ -1,0 +1,7 @@
+{
+  "slices": 12,
+  "asrRows": 12,
+  "errors": [],
+  "status": "状态：成功\n已生成 12 个切片和 ASR 标注\n阶段：asr\n日志：C:\\Users\\ChenXingYu\\AppData\\Local\\Temp\\wgx-browser-sr67v6bl\\data\\logs\\audio\\audio-5b4e8c7ad3dc48e0b9d0b0fe57228ff0-asr.log",
+  "trainingStarted": false
+}

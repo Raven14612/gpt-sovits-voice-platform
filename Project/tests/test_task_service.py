@@ -26,10 +26,12 @@ class TaskServiceTests(TestCase):
             index = Path(directory) / "tasks.json"
             upsert_task(TaskRecord(task_id="running-1", kind="train_voice", status=TaskStatus.RUNNING), index)
             upsert_task(TaskRecord(task_id="done-1", kind="train_voice", status=TaskStatus.SUCCEEDED), index)
+            upsert_task(TaskRecord(task_id="pending-1", kind="train_voice"), index)
 
             recovered = recover_tasks(index)
 
-            self.assertEqual(len(recovered), 2)
+            self.assertEqual(len(recovered), 3)
+            self.assertEqual(next(item for item in recovered if item.task_id == "pending-1").status, TaskStatus.CANCELLED)
             self.assertEqual(next(item for item in recovered if item.task_id == "running-1").status, TaskStatus.FAILED)
             self.assertEqual(next(item for item in recovered if item.task_id == "done-1").status, TaskStatus.SUCCEEDED)
             self.assertEqual(next(item for item in list_tasks(index) if item.task_id == "running-1").status, TaskStatus.FAILED)
