@@ -1,0 +1,7 @@
+{
+  "profile": "portable-v2pro",
+  "engine_root": "third_party/GPT-SoVITS-v2pro-20250604-nvidia50",
+  "python_path": "runtimes/engine/python.exe",
+  "max_gpu_jobs": 1,
+  "parallel_infer": false
+}

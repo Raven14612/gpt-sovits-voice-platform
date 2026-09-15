@@ -1,0 +1,9 @@
+{
+  "version": "3.13.11",
+  "architecture": "win_amd64",
+  "url": "https://www.python.org/ftp/python/3.13.11/python-3.13.11-embed-amd64.zip",
+  "filename": "python-3.13.11-embed-amd64.zip",
+  "bytes": 10927990,
+  "sha256": "1ec066fb61ba5e8c73e29e048cd07c26850f74585e3a116005135b31b8004890",
+  "license": "CPython PSF license; included LICENSE.txt"
+}

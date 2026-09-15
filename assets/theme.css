@@ -1,0 +1,439 @@
+/* Layout and component treatment; shared palette lives in retro-tokens.css. */
+html {
+  scrollbar-gutter: stable;
+  background: var(--rj-bg);
+}
+
+/* Native inputs, scrollbars and media controls use the same paper appearance. */
+:root, :root .dark, .gradio-container {
+  color-scheme: light;
+}
+
+body {
+  background: var(--rj-bg);
+  color: var(--rj-text);
+}
+
+.gradio-container {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 24px 32px 32px;
+  background: var(--rj-bg);
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  letter-spacing: 0;
+}
+
+.gradio-container *, .gradio-container *::before, .gradio-container *::after {
+  box-sizing: border-box;
+}
+
+#topbar {
+  align-items: center;
+  gap: 24px;
+  padding: 8px 0 24px;
+  margin-bottom: 12px;
+  border-bottom: 3px solid var(--rj-border);
+}
+
+#brand-title { min-width: 0 !important; }
+#brand-title h1 {
+  color: var(--rj-border);
+  font-size: clamp(23px, 2.1vw, 32px);
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: 0.025em;
+}
+
+#scope-badge {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0 !important;
+  padding: 8px 14px;
+  border: 1px dashed var(--rj-accent);
+  border-radius: var(--rj-radius-sm);
+  background: var(--rj-surface);
+}
+#scope-badge p { color: var(--rj-action); font-size: 13px; margin: 0; }
+
+#app-shell {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 24px;
+  width: 100%;
+}
+
+#sidebar {
+  flex: 0 0 232px !important;
+  min-width: 0 !important;
+  padding: 12px 4px 12px 0;
+  gap: 12px;
+}
+
+#sidebar > button {
+  position: relative;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 14px 32px 14px 16px;
+  border-radius: 10px 10px 4px 4px;
+  min-height: 50px;
+  font-weight: 700;
+}
+
+/* The marker makes the selected page distinguishable without color alone. */
+#sidebar > button.primary::after {
+  content: "▸";
+  position: absolute;
+  right: 12px;
+  font-size: 20px;
+}
+
+#environment-status {
+  margin-top: 16px;
+  padding: 18px 12px 8px;
+  border-top: 1px dashed var(--rj-rule);
+  color: var(--rj-muted);
+  overflow-wrap: anywhere;
+}
+#environment-status h3 { font-size: 16px; color: var(--rj-text); }
+#environment-status p, #environment-status li { font-size: 13px; line-height: 1.75; }
+#environment-status ul { padding-left: 18px; }
+#environment-status .prose { overflow-wrap: anywhere; }
+
+#page-content {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  padding: 24px;
+  border: var(--rj-outline);
+  border-radius: var(--rj-radius-lg);
+  background: var(--rj-surface);
+  box-shadow: var(--rj-shadow-lg);
+}
+
+#page-content > .column {
+  min-width: 0 !important;
+  width: 100%;
+}
+#page-content .form { min-width: 0; }
+#page-content h2 {
+  display: inline-block;
+  color: var(--rj-border);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.5;
+  padding: 0 4px 8px;
+  border-bottom: 3px solid var(--rj-accent);
+}
+#page-content h3 { font-size: 18px; color: var(--rj-action); line-height: 1.6; }
+.gradio-container .prose p { line-height: 1.75; }
+.gradio-container :is(p, li, label, textarea, h1, h2, h3) { overflow-wrap: anywhere; }
+.gradio-container textarea { line-height: 1.65; }
+
+/* Accordion headings read as flat dividers inside the main paper sheet. */
+#page-content button.label-wrap {
+  background: var(--rj-highlight);
+  color: var(--rj-border);
+  padding: 10px 12px;
+  border-radius: var(--rj-radius-sm);
+  border-bottom: 1px dashed var(--rj-rule);
+}
+
+/* Only action buttons carry depth. Dense table and audio tools remain flat. */
+.gradio-container button:is(.primary, .secondary, .stop) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.gradio-container button:is(.primary, .secondary, .stop):disabled {
+  opacity: 1;
+  filter: none;
+  background: var(--rj-disabled);
+  color: var(--rj-muted);
+  border-color: var(--rj-rule);
+  box-shadow: none;
+  transform: none;
+}
+.gradio-container :is(button, a, input, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--rj-action);
+  outline-offset: 3px;
+}
+.gradio-container :is(button, a).primary:focus-visible {
+  outline-offset: 4px;
+}
+.gradio-container textarea:disabled,
+.gradio-container input:disabled {
+  opacity: 1;
+  -webkit-text-fill-color: var(--rj-muted);
+  color: var(--rj-muted);
+}
+
+#page-content table { font-size: 14px; }
+#page-content th { background: var(--rj-surface); color: var(--rj-border); }
+#page-content td { color: var(--rj-text); }
+#page-content th, #page-content td { border-color: var(--rj-rule); }
+.gradio-container ::selection { background: var(--rj-highlight); color: var(--rj-text); }
+
+/* Read-only results are flat grey-paper records, with no editable-field glow.
+   Use explicit classes: an audio player, selectable row or temporarily disabled
+   input still has an interaction and must not inherit this treatment wholesale. */
+#page-content .rj-readout {
+  --block-background-fill: var(--rj-readout-bg);
+  --block-label-background-fill: var(--rj-readout-bg);
+  --block-label-text-color: var(--rj-readout-text);
+  --block-info-text-color: var(--rj-readout-text);
+  --input-background-fill: var(--rj-readout-bg);
+  --input-background-fill-hover: var(--rj-readout-bg);
+  --input-background-fill-focus: var(--rj-readout-bg);
+  --input-border-color: var(--rj-readout-border);
+  --input-border-color-hover: var(--rj-readout-border);
+  --input-border-color-focus: var(--rj-readout-border);
+  --input-shadow-focus: none;
+  --body-text-color: var(--rj-readout-text);
+  background: var(--rj-readout-bg);
+  color: var(--rj-readout-text);
+  border: 1px dashed var(--rj-readout-border);
+  /* Gradio emits the border style as an inline component property. */
+  border-style: dashed !important;
+  border-radius: var(--rj-radius-md);
+  box-shadow: none;
+}
+#page-content .rj-readout :is(textarea, input),
+#page-content .rj-readout :is(textarea, input):is(:hover, :focus, :disabled) {
+  background: var(--rj-readout-bg);
+  color: var(--rj-readout-text);
+  -webkit-text-fill-color: var(--rj-readout-text);
+  border: 1px solid var(--rj-readout-border);
+  box-shadow: none;
+  opacity: 1;
+  cursor: default;
+  caret-color: transparent;
+  user-select: text;
+}
+#page-content .rj-readout :is(label, .prose, .prose p, .voice-summary, .voice-metadata) {
+  color: var(--rj-readout-text);
+}
+#page-content .rj-readout [data-testid="block-info"] {
+  color: var(--rj-readout-text);
+  background: var(--rj-readout-bg);
+}
+#page-content .rj-readout-prose { padding: 12px 16px; }
+#page-content .rj-readout :is(th, td) {
+  color: var(--rj-readout-text);
+  border-color: var(--rj-readout-border);
+  background: var(--rj-readout-bg);
+}
+#page-content .rj-readout th { background: var(--rj-readout-header); }
+#page-content .rj-readout.rj-readout-alert {
+  border-left: 3px solid var(--rj-danger-text);
+}
+/* Gradio places the visible outline on a form wrapper for grouped fields.
+   Only recolor wrappers containing readouts exclusively, never mixed forms. */
+#page-content .form:has(> .rj-readout):not(:has(> .block:not(.rj-readout))) {
+  background: var(--rj-readout-bg);
+  border: 1px dashed var(--rj-readout-border);
+  box-shadow: none;
+}
+#page-content .form:has(> .rj-readout-alert) {
+  border-left: 3px solid var(--rj-danger-text);
+}
+
+/* The project footer replaces Gradio's generic API, credit and settings links. */
+.gradio-container footer { display: none !important; }
+#project-footer { background: transparent; border: 0; box-shadow: none; }
+#project-footer nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 8px 4px;
+  color: var(--rj-muted);
+  font-size: 14px;
+}
+#project-footer a { color: var(--rj-muted); text-decoration: none; }
+#project-footer a[href]:hover { color: var(--rj-action); text-decoration: underline; }
+#project-footer a[href]:focus-visible { outline: 2px solid var(--rj-action); outline-offset: 4px; }
+#project-footer a[aria-disabled="true"] { cursor: default; }
+
+/* One shared indicator; transform/opacity animation avoids per-frame layout. */
+/* Clip stray horizontal content without creating a scroll container that
+   would prevent the task strip from sticking to the viewport. */
+.gradio-container { overflow: clip !important; }
+#task-progress-strip {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  border: 0;
+  background: var(--rj-surface);
+  box-shadow: none;
+}
+.task-progress-panel { padding: 10px 12px; background: var(--rj-paper-light); border-bottom: 1px solid var(--rj-rule); }
+.task-progress-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: var(--rj-text); }
+.task-progress-stage { margin-left: auto; color: var(--rj-muted); font-size: 12px; }
+.task-progress-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rj-muted); flex-shrink: 0; }
+.task-progress-track { height: 8px; margin-top: 9px; overflow: hidden; border-radius: 4px; background: var(--rj-disabled); }
+.task-progress-fill { height: 100%; width: 100%; transform: scaleX(0); transform-origin: left; background: var(--rj-action); }
+.task-progress-note { margin-top: 6px; color: var(--rj-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.task-progress-panel[data-state="running"] .task-progress-fill {
+  animation: rj-simulated-progress var(--progress-duration) linear var(--progress-delay) both;
+  will-change: transform;
+}
+.task-progress-panel:is([data-state="running"], [data-state="pending"]) .task-progress-dot {
+  background: var(--rj-action); animation: rj-task-pulse 1.6s ease-in-out infinite;
+}
+.task-progress-panel[data-state="pending"] .task-progress-fill { transform: scaleX(.06); }
+.task-progress-panel[data-state="succeeded"] .task-progress-fill { background: var(--rj-success-text); transform: scaleX(1); }
+.task-progress-panel[data-state="succeeded"] .task-progress-dot { background: var(--rj-success-text); }
+.task-progress-panel[data-state="failed"] .task-progress-fill { background: var(--rj-danger-text); transform: scaleX(.06); }
+.task-progress-panel[data-state="failed"] .task-progress-dot { background: var(--rj-danger-text); }
+.task-progress-panel[data-state="cancelled"] .task-progress-fill { background: var(--rj-muted); transform: scaleX(.06); }
+@keyframes rj-simulated-progress {
+  0% { transform: scaleX(.02); }
+  15% { transform: scaleX(.10); }
+  35% { transform: scaleX(.75); }
+  60% { transform: scaleX(.88); }
+  100% { transform: scaleX(.93); }
+}
+@keyframes rj-task-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .task-progress-panel .task-progress-fill, .task-progress-panel .task-progress-dot { animation: none !important; }
+  .task-progress-panel[data-state="running"] .task-progress-fill { transform: scaleX(.55); }
+}
+
+/* Delayed hover notes float outside Gradio's clipping containers. */
+#rj-button-hint {
+  position: fixed;
+  z-index: 10000;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 16px 18px;
+  border: var(--rj-outline);
+  border-top: 5px solid var(--rj-action);
+  border-radius: var(--rj-radius-lg);
+  background: var(--rj-paper-light);
+  color: var(--rj-text);
+  box-shadow: var(--rj-shadow-lg);
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+#rj-button-hint[hidden] { display: none; }
+#rj-button-hint::after {
+  content: "";
+  position: absolute;
+  left: var(--hint-tail-x, 24px);
+  width: 12px;
+  height: 12px;
+  background: var(--rj-paper-light);
+  border-right: var(--rj-outline);
+  border-bottom: var(--rj-outline);
+  transform: rotate(45deg);
+  bottom: -8px;
+}
+#rj-button-hint[data-side="below"]::after {
+  top: -9px;
+  bottom: auto;
+  border: 0;
+  border-left: var(--rj-outline);
+  border-top: var(--rj-outline);
+  transform: rotate(45deg);
+}
+
+#voice-library > .column { min-width: 0 !important; }
+#voice-library {
+  padding: 16px;
+  border: 1px solid var(--rj-rule);
+  border-radius: var(--rj-radius-md);
+  background: var(--rj-surface);
+}
+/* Gradio sets viewport-dependent max-height and option widths inline.
+   Keep these two pickers to two 56px choices plus the menu border. */
+#available-voice-picker ul.options,
+#deleted-voice-picker ul.options {
+  max-height: 114px !important;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--rj-rule);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+#available-voice-picker ul.options > li.item,
+#deleted-voice-picker ul.options > li.item {
+  display: block;
+  width: 100% !important;
+  height: 56px;
+  padding: 16px 12px;
+  line-height: 24px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+#voice-library .voice-library-row {
+  flex-wrap: nowrap;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--rj-rule);
+  border-left: 4px solid var(--rj-accent);
+  border-radius: var(--rj-radius-md);
+  background: var(--rj-paper-light);
+  box-shadow: var(--rj-shadow-sm);
+}
+#voice-library .voice-summary { color: var(--rj-text); overflow-wrap: anywhere; }
+#voice-library .voice-summary-title { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+#voice-library .voice-summary-title strong { font-size: 18px; }
+#voice-library .voice-status {
+  padding: 2px 8px;
+  border: 1px dashed var(--rj-rule);
+  border-radius: var(--rj-radius-sm);
+  font-size: 12px;
+}
+#voice-library .voice-summary p { margin: 8px 0 0; line-height: 1.6; }
+#voice-library .voice-metadata { color: var(--rj-muted); font-size: 13px; }
+#voice-library .voice-row-actions { gap: 8px; }
+
+@media (max-width: 600px) {
+  #voice-library { padding: 10px; }
+  #voice-library .voice-library-row { flex-direction: column; align-items: stretch; padding: 12px; }
+  #voice-library .voice-row-actions { flex-direction: row; width: 100%; }
+  #voice-library .voice-row-actions > button { flex: 1; min-width: 0; }
+}
+
+@media (max-width: 1000px) {
+  .gradio-container { padding: 20px; }
+  #sidebar { flex-basis: 204px !important; }
+  #app-shell { gap: 16px; }
+  #page-content { padding: 18px; }
+  #topbar { gap: 12px; }
+}
+
+@media (max-width: 700px) {
+  .gradio-container { padding: 12px; }
+  #topbar { flex-direction: column; align-items: flex-start; padding: 4px 0 16px; }
+  #brand-title h1 { font-size: 23px; }
+  #scope-badge { width: 100%; }
+  #app-shell { flex-direction: column; gap: 16px; }
+  #sidebar, #page-content { width: 100%; flex: 0 0 auto !important; }
+  #sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 4px 0 0;
+    gap: 10px;
+  }
+  #sidebar > button { font-size: 14px; padding: 10px 24px 10px 10px; min-height: 48px; }
+  #environment-status { margin: 4px 0 0; grid-column: 1 / -1; padding: 12px 8px 0; }
+  #page-content { padding: 14px 12px; }
+  #page-content h2 { font-size: 21px; }
+  #page-content h3 { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gradio-container, .gradio-container * {
+    --button-transform-active: none;
+    --button-transition: none;
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

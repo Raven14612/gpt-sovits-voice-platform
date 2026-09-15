@@ -1,0 +1,4 @@
+import json
+from pathlib import Path
+root=Path(__file__).resolve().parents[1]
+contract=(root/'Documents/数据存放与生命周期.md').read_text(encoding='utf8'); files=['models/schemas.py','services/tts_service.py','services/history_service.py','services/task_service.py','adapters/inference_runtime.py'];source=''.join((root/f).read_text(encoding='utf8') for f in files); fields=['voice_id','text','emotion','speed_factor','fragment_interval','output_path','status','result_id','input_params','output_info','error_code']; checks={f:(f in contract and f in source) for f in fields}; report={'passed':all(checks.values()),'fields':checks,'errors':[f for f,v in checks.items() if not v]}; out=root/'data/logs/diagnostics/week4';out.mkdir(parents=True,exist_ok=True);(out/'contract-traceability.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8');print(json.dumps(report,ensure_ascii=False));raise SystemExit(0 if report['passed'] else 1)

@@ -1,8 +1,0 @@
-{
-  "profile": "local-gpt-sovits",
-  "engine_root": "D:/path/to/GPT-SoVITS",
-  "python_path": "D:/path/to/GPT-SoVITS/runtime/python.exe",
-  "max_gpu_jobs": 1,
-  "parallel_infer": false
-}
-

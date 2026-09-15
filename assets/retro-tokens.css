@@ -1,0 +1,63 @@
+/* Framework-neutral tokens. Apply .rj-theme to the themed root.
+   This file defines values only; implement component styles in the host project. */
+:root, .rj-theme {
+  --rj-bg: #dfd5c6;
+  --rj-surface: #ebe1d2;
+  --rj-text: #382b24;
+  --rj-muted: #695548;
+  --rj-border: #52322a;
+  --rj-rule: #ad9681;
+  --rj-accent: #a85b45;
+  --rj-accent-hover: #8e4a38;
+  --rj-accent-deep: #87443a;
+  --rj-tint: #a85b4520;
+  --rj-highlight: #a85b4525;
+  --rj-paper-light: #f4ecdf;
+  --rj-disabled: #d0c3b2;
+
+  /* Static readouts: grey parchment, distinct from writable cream inputs. */
+  --rj-readout-bg: #ded8cd;
+  --rj-readout-header: #e5dfd5;
+  --rj-readout-text: #645d52;
+  --rj-readout-border: #b7aea0;
+
+  /* Adaptation: deeper fill for normal-sized cream button text. */
+  --rj-action: #87443a;
+  --rj-action-hover: #52322a;
+  --rj-on-action: #ebe1d2;
+
+  --rj-success: #6e8b5e;
+  --rj-success-text: #546e46;
+  --rj-danger: #a85b4f;
+  --rj-danger-text: #87443a;
+  --rj-warning: #b08d4f;
+  --rj-warning-text: #82663a;
+  --rj-info: #67829e;
+  --rj-info-text: #4c6478;
+
+  --rj-radius-sm: 5px;
+  --rj-radius-md: 8px;
+  --rj-radius-lg: 12px;
+  --rj-outline: 2px solid var(--rj-border);
+  --rj-shadow-sm: 2px 2px 0 var(--rj-border);
+  --rj-shadow-lg: 4px 4px 0 var(--rj-border);
+  --rj-shadow-pressed: 0 0 0 var(--rj-border);
+  --rj-press-distance: 2px;
+  --rj-duration: 100ms;
+  --rj-easing: ease;
+
+  /* Suggested spacing scale, added for portable use. */
+  --rj-space-1: 4px;
+  --rj-space-2: 8px;
+  --rj-space-3: 12px;
+  --rj-space-4: 16px;
+  --rj-space-6: 24px;
+  --rj-space-8: 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root, .rj-theme {
+    --rj-duration: 0ms;
+    --rj-press-distance: 0px;
+  }
+}
