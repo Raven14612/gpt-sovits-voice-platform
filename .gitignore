@@ -42,6 +42,7 @@ data/cache/
 data/tmp/
 data/migrations/
 data/.gpu-process.lock
+data/.metadata.lock
 data/s2-*
 data/ui-*
 config/path-migration.json
