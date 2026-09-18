@@ -4,7 +4,7 @@ import gradio as gr
 from uuid import uuid4
 
 from models.schemas import AppError
-from services import audio_service, dataset_service
+from services import audio_service, dataset_service, emotion_service
 from ui.task_status import error_text, task_status_text
 
 
@@ -93,6 +93,46 @@ def reload_processed_dataset(dataset_id):
     return gr.update(choices=dataset_choices(), value=selected), source, rows, selected_slice, message
 
 
+def emotion_controls(dataset_id):
+    probe = emotion_service.probe_emotion_model()
+    record = dataset_service.get_dataset(dataset_id) if dataset_id else None
+    ready = bool(record and record.list_path and record.slice_dir)
+    return probe["message"], gr.update(interactive=ready and probe["available"]), gr.update(
+        interactive=ready and bool(emotion_service.suggestion_rows(dataset_id)))
+
+
+def generate_emotion_suggestions(dataset_id, rows, protected):
+    disabled = gr.update(interactive=False)
+    yield gr.skip(), "正在使用 CPU 生成文本情绪建议。", disabled, disabled, disabled
+    try:
+        # Protect all unsaved edits, including a manual selection of neutral.
+        original = {r[0]: r for r in dataset_service.load_corrections(dataset_id)}
+        protected = set(protected or []) | {r[0] for r in rows if r != original.get(r[0])}
+        emotion_service.suggest_emotions(dataset_id, protected_paths=protected)
+        message = "建议尚未写入训练标签。可逐条修改或接受高置信度建议，再确认标注。"
+    except Exception as exc:
+        message = error_text(exc)
+    _, suggest, accept = emotion_controls(dataset_id)
+    yield emotion_service.suggestion_rows(dataset_id), message, suggest, accept, gr.update(interactive=True)
+
+
+def accept_emotion_suggestions(dataset_id, rows, protected):
+    try:
+        updated = emotion_service.apply_suggestions_to_rows(dataset_id, rows, high_confidence_only=True,
+                                                            protected_paths=protected or [])
+        return updated, emotion_service.suggestion_rows(dataset_id), "已接受可用建议；建议尚未写入训练标签。请确认标注。"
+    except (AppError, OSError) as exc:
+        return gr.skip(), gr.skip(), error_text(exc)
+
+
+def update_protected_slice(rows, selected, text, emotion, protected):
+    updated, message = update_slice(rows, selected, text, emotion)
+    paths = set(protected or [])
+    if selected is not None and 0 <= selected < len(rows):
+        paths.add(rows[selected][0])
+    return updated, message, sorted(paths)
+
+
 def render_audio_page(state):
     gr.Markdown("## 音频数据处理")
     with gr.Accordion("导入音频", open=True):
@@ -119,6 +159,15 @@ def render_audio_page(state):
     message = gr.Textbox(label="数据集状态", value="当前没有数据集。", interactive=False, elem_classes=["rj-readout"])
     gr.Markdown("识别完成后，不需要修改时可直接确认当前标注，未设置的情绪默认为普通。需要调整文字或情绪时，展开下方校对面板。")
     with gr.Accordion("识别与人工校对（可选）", open=False, elem_id="slice-corrections"):
+        protected = gr.State([])
+        model_status = gr.Textbox(label="情绪模型状态与下载说明", value="点击重新检测模型查看安装说明。", interactive=False)
+        with gr.Row():
+            probe_model = gr.Button("重新检测模型", elem_id="hint-emotion-probe")
+            suggest = gr.Button("智能标注未确认项", interactive=False, elem_id="hint-emotion-suggest")
+            accept_suggestions = gr.Button("接受高置信度建议", interactive=False, elem_id="hint-emotion-accept")
+        gr.Markdown("文本模型只提供语义建议，不能识别音频真实语气。建议尚未写入训练标签，最终需确认标注。")
+        suggestions = gr.Dataframe(headers=["切片", "建议情绪", "模型原始类别", "置信度", "状态", "复核说明"],
+                                   value=[], type="array", interactive=False, wrap=True, label="情绪建议（逐条核对）")
         with gr.Accordion("导入已有识别文本", open=False):
             transcript = gr.File(label="识别文本 (.list)", file_types=[".list", ".txt"], type="filepath", elem_id="transcript-upload")
             import_list = gr.Button("导入识别文本")
@@ -163,7 +212,16 @@ def render_audio_page(state):
     import_list.click(load_transcript, [state["selected_dataset"], transcript], [table, state["selected_slice"], message]).then(
         lambda: ("", "", "neutral"), outputs=[selected_path, text, emotion])
     table.select(select_slice, table, [state["selected_slice"], selected_path, text, emotion])
-    apply.click(update_slice, [table, state["selected_slice"], text, emotion], [table, message])
+    apply.click(update_protected_slice, [table, state["selected_slice"], text, emotion, protected], [table, message, protected])
+    probe_model.click(emotion_controls, datasets, [model_status, suggest, accept_suggestions])
+    datasets.change(lambda value: ([], emotion_service.suggestion_rows(value)), datasets, [protected, suggestions]).then(
+        emotion_controls, datasets, [model_status, suggest, accept_suggestions])
+    table.change(lambda value: emotion_service.suggestion_rows(value), datasets, suggestions).then(
+        emotion_controls, datasets, [model_status, suggest, accept_suggestions])
+    suggest.click(generate_emotion_suggestions, [datasets, table, protected],
+                  [suggestions, message, suggest, accept_suggestions, probe_model], concurrency_id="emotion-suggestions")
+    accept_suggestions.click(accept_emotion_suggestions, [datasets, table, protected], [table, suggestions, message],
+                             concurrency_id="emotion-suggestions")
     save.click(save_table, [state["selected_dataset"], table, annotation_name], message)
     to_end.change(lambda value: gr.update(interactive=not value), to_end, end)
     submit.click(run_audio_submission, [datasets, start, end, to_end],

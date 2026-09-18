@@ -171,6 +171,8 @@ def source_snapshot(voice_id, emotion, *, profile=None, reference_path=None, pro
                 "dataset_name": dataset.display_name if dataset else "来源未记录",
                 "provenance": "legacy_backfill" if historical else "generation"}
     if profile:
+        if profile.origin_type == "workshop":
+            snapshot.update(dataset_name="创意工坊", origin_type="workshop", origin_workshop_id=profile.origin_workshop_id)
         for key in ("gpt_weight", "sovits_weight"):
             path = getattr(profile, key)
             snapshot[key] = {"name": path.name if path else None}

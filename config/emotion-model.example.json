@@ -1,0 +1,8 @@
+{
+  "model_id": "emotion-zh-v1",
+  "relative_dir": "models/emotion/emotion-zh-v1",
+  "download_page": "",
+  "manifest_sha256": "",
+  "max_length": 256,
+  "high_confidence_threshold": 0.80
+}

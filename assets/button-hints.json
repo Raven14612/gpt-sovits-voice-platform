@@ -47,4 +47,12 @@
     "label": "复用参数",
     "text": "看主人抓耳挠腮的，这个就是把这个成品的文本、音色、情绪和语速重新填回“文本生成语音”里喵；要是来源音色已经删了就得另外挑音色，而且它可不会自动开始合成喵！"
   }
+,
+  "hint-emotion-probe": {"label": "重新检测模型", "text": "检查固定目录里的离线情绪模型清单和文件哈希，不会自动联网下载。"},
+  "hint-emotion-suggest": {"label": "智能标注未确认项", "text": "使用 CPU 文本模型生成建议；建议尚未写入训练标签，仍需人工确认。"},
+  "hint-emotion-accept": {"label": "接受高置信度建议", "text": "只接受无需复核且达到阈值的建议，并回填表格；最后仍要确认标注。"},
+  "hint-workshop-cover": {"label": "保存封面", "text": "为自己上传的音色保存共享封面；支持 PNG、JPEG、WebP，最大 4 MiB。只有上传者可修改。"},
+  "hint-workshop-connect": {"label": "测试连接", "text": "测试可选的单机创意工坊服务；服务不可用不会影响本地功能。"},
+  "hint-workshop-refresh": {"label": "刷新列表", "text": "读取工坊音色元数据列表，不下载权重。"},
+  "hint-workshop-upload": {"label": "上传选中音色", "text": "只允许上传已验证音色导出的自包含包，令牌仅保留在当前界面。"}
 }

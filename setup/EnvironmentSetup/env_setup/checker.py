@@ -190,7 +190,7 @@ def run_check(project_root, engine_root=None, engine_python=None, *, ui_python=N
     try:
         env = project_environment(root=root, python=python, engine_root=engine)
         env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         add('environment', 'FAIL', str(exc)); env = None
 
     def probe(kind, executable, valid, groups):
@@ -271,7 +271,8 @@ def run_check(project_root, engine_root=None, engine_python=None, *, ui_python=N
     except (OSError, ValueError, KeyError) as exc:
         add('resources', 'FAIL', str(exc), groups=('inference', 'training'))
     try:
-        voices = json.loads((root/'data/index/voices.json').read_text(encoding='utf-8'))
+        voice_index = root/'data/index/voices.json'
+        voices = json.loads(voice_index.read_text(encoding='utf-8')) if voice_index.is_file() else []
         available = []
         for voice in voices:
             if voice.get('status') != 'verified':
@@ -285,7 +286,9 @@ def run_check(project_root, engine_root=None, engine_python=None, *, ui_python=N
                     with wave.open(str(audio), 'rb') as wav:
                         if wav.getnframes() > 0:
                             available.append(voice['voice_id']); break
-        add('voice_inputs', 'PASS' if available else 'FAIL', 'Available weights and reference inputs; loading still requires synthesis',
+        add('voice_inputs', 'PASS' if available else 'FAIL',
+            'Available weights and reference inputs; loading still requires synthesis' if available else
+            '尚未安装或训练可用音色；可启动工作台准备数据，或从工坊安装授权音色。',
             actual=available, groups=('inference',), action='Train/register a voice with package weights and a reference WAV/text')
     except (OSError, ValueError, KeyError, wave.Error) as exc:
         add('voice_inputs', 'FAIL', str(exc), groups=('inference',))
@@ -311,7 +314,7 @@ def run_check(project_root, engine_root=None, engine_python=None, *, ui_python=N
         if write_config:
             result['summary'] = 'FAIL'
     if report_path is not False:
-        save_report(result, Path(report_path or root/'setup/EnvironmentSetup/reports/environment-report.json'))
+        save_report(result, Path(report_path or root/'data/logs/diagnostics/environment-report.json'))
     return result
 
 
@@ -346,7 +349,7 @@ def main():
         for item in report['checks']:
             if item['status'] != 'PASS':
                 print(f"[{item['status']}] {item['key']}: {item['message']} {item['next_action']}")
-        print('Detailed report:', args.report_path or args.project_root/'setup/EnvironmentSetup/reports/environment-report.json')
+        print('Detailed report:', args.report_path or args.project_root/'data/logs/diagnostics/environment-report.json')
         return 1 if report['summary'] == 'FAIL' else 0
     except (OSError, ValueError, KeyError) as exc:
         print(f'Environment check failed: {exc}', file=sys.stderr)

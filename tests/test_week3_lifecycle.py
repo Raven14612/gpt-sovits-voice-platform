@@ -148,6 +148,29 @@ class TTSLifecycleTests(HistoryEnvironment):
         finally:
             tasks.release_gpu()
 
+    def test_workshop_synthesis_keeps_output_and_records_usage_without_network(self):
+        self.voice.origin_type = 'workshop'
+        adapter = Mock(last_inference={})
+        adapter.synthesize.side_effect = lambda **kw: pcm(kw['output_path'])
+        with patch.object(tts, 'GPTSoVITSAdapter', return_value=adapter), \
+             patch('services.voice_service.mark_workshop_used') as used, \
+             patch('services.workshop_client.WorkshopClient._client', side_effect=AssertionError('network')):
+            self.call()
+            used.assert_called_once_with(self.voice)
+        self.assertTrue((self.output/'tts-r.wav').is_file())
+        self.assertEqual(tasks.list_tasks(self.task_index)[0].status, TaskStatus.SUCCEEDED)
+        self.assertEqual(len(history.list_history()), 1)
+
+    def test_workshop_usage_write_failure_does_not_undo_synthesis(self):
+        self.voice.origin_type = 'workshop'
+        adapter = Mock(last_inference={})
+        adapter.synthesize.side_effect = lambda **kw: pcm(kw['output_path'])
+        with patch.object(tts, 'GPTSoVITSAdapter', return_value=adapter), \
+             patch('services.voice_service.mark_workshop_used', side_effect=OSError('read only')):
+            self.call()
+        self.assertTrue((self.output/'tts-r.wav').is_file())
+        self.assertEqual(tasks.list_tasks(self.task_index)[0].status, TaskStatus.SUCCEEDED)
+
     def test_engine_failure_invalid_pcm_and_history_failure_never_publish(self):
         for behavior in ('exit', 'invalid', 'history'):
             adapter = Mock()

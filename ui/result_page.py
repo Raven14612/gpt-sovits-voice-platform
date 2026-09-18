@@ -115,9 +115,13 @@ def render_result_page(state):
     with gr.Row():
         delete=gr.Button("删除结果",variant="stop", elem_id="hint-result-delete")
         reuse=gr.Button("复用参数", elem_id="hint-result-reuse")
-    results.change(select_result,results,[state["current_result"],audio,message])
-    results.change(result_details, results, [title, notes, details, download_file])
-    query.change(search_results, [query, results], [results, search_summary],
+    # A queued selection may outlive a search/deletion that replaced the choices.
+    # Both handlers validate IDs against the history index and safely clear stale IDs.
+    results.change(select_result,results,[state["current_result"],audio,message], preprocess=False)
+    results.change(result_details, results, [title, notes, details, download_file], preprocess=False)
+    # A search can race with dropdown choices being replaced after deletion.
+    # The selected ID in State has no stale-choice preprocessing constraint.
+    query.change(search_results, [query, state["current_result"]], [results, search_summary],
                  queue=False, trigger_mode="always_last", show_progress="hidden")
     save.click(save_result_details, [results, title, notes, query], [results, message]).then(
         lambda: None, outputs=download_file)

@@ -13,8 +13,9 @@ from ui.voice_page import render_voice_page, voice_choices
 from ui.audio_page import dataset_choices
 from ui.task_status import refresh_status, refresh_task_picker, saved_task_choices
 from ui.task_progress import refresh_progress
+from ui.workshop_page import render_workshop_page, refresh_workshop
 
-PAGE_COUNT = 5
+PAGE_COUNT = 6
 
 
 def _status_markdown() -> str:
@@ -71,6 +72,7 @@ def render_root_layout() -> None:
             tts_button = gr.Button("文本生成语音")
             result_button = gr.Button("合成结果管理")
             task_button = gr.Button("任务与日志")
+            workshop_button = gr.Button("音色创意工坊")
             gr.Markdown(_status_markdown(), elem_id="environment-status")
 
         with gr.Column(scale=1, min_width=0, elem_id="page-content"):
@@ -95,6 +97,8 @@ def render_root_layout() -> None:
                 status = gr.Textbox(label="任务状态", value="当前没有任务。", lines=4, interactive=False, elem_classes=["rj-readout"])
                 stages = gr.Dataframe(headers=["阶段", "退出码", "检查信息", "日志文件"], value=[], type="array", interactive=False, wrap=True, elem_classes=["rj-readout"])
                 log = gr.Textbox(label="日志摘要", value="暂无日志。", lines=6, max_lines=12, interactive=False, elem_classes=["rj-readout"])
+            with gr.Column(visible=False) as workshop_page:
+                workshop_local, workshop_search, workshop_outputs = render_workshop_page(state, voice_library)
             timer = gr.Timer(1)
             timer.tick(refresh_progress,
                        [progress_snapshot, state["submitting"], state["tts_submitting"], state["notice"]],
@@ -116,8 +120,11 @@ def render_root_layout() -> None:
         <a href="https://github.com/Raven14612" target="_blank" rel="noopener noreferrer">关于</a>
     </nav>''', elem_id="project-footer", padding=False)
 
-    pages = [audio_page, voice_page, tts_page, result_page, task_page]
-    navigation = [audio_button, voice_button, tts_button, result_button, task_button]
+    pages = [audio_page, voice_page, tts_page, result_page, task_page, workshop_page]
+    navigation = [audio_button, voice_button, tts_button, result_button, task_button, workshop_button]
+    workshop_button.click(lambda value: gr.update(choices=voice_choices(), value=value),
+                          state["selected_voice"], workshop_local, queue=False, show_progress="hidden")
+    workshop_button.click(refresh_workshop, workshop_search, workshop_outputs, concurrency_id="workshop-transfer")
     tts_refs["event"].then(show_synthesis_result, state["current_result"],
                            [results, result_audio, result_message] + pages + navigation)
     reuse_button.click(reuse_to_tts, results,

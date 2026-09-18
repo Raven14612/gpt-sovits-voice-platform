@@ -280,6 +280,12 @@ class IndependentStorageTests(TestCase):
             self.assertIsNone(missing["data"][0]["value"])
             self.assertEqual(missing["data"][0]["choices"], [])
             self.assertIn("未找到", missing["data"][1])
+            # A queued change from the previous choices must not raise Gradio's
+            # stale-dropdown error after search replaced the choices with [].
+            stale = await app.process_api(callback(result_page.select_result), ["missing-result"], state=session)
+            self.assertIsNone(stale["data"][1])
+            stale_details = await app.process_api(callback(result_page.result_details), ["missing-result"], state=session)
+            self.assertEqual(stale_details["data"][0], "")
             cleared = await app.process_api(callback(result_page.search_results), ["", None], state=session)
             self.assertEqual(cleared["data"][0]["value"], "result")
             self.assertEqual(cleared["data"][1], "")

@@ -138,7 +138,8 @@ def deletion_plan(voice_id, index_path, root=PROJECT_ROOT):
         raise AppError("VOICE_STATE_INVALID", "请选择可用或已删除的音色组。")
     datasets = read_json(root / "data/index/datasets.json")
     validate_records(datasets, DatasetRecord, "dataset_id")
-    dataset = next((d for d in datasets if d["dataset_id"] == voice["dataset_id"]), None)
+    workshop = voice.get("origin_type") == "workshop"
+    dataset = None if workshop else next((d for d in datasets if d["dataset_id"] == voice["dataset_id"]), None)
     roots = set()
     if dataset:
         shared = [v for v in voices if v["voice_id"] != voice_id and v["dataset_id"] == dataset["dataset_id"]]
@@ -170,6 +171,8 @@ def deletion_plan(voice_id, index_path, root=PROJECT_ROOT):
             if not raw.is_absolute() or raw.is_relative_to(root):
                 checked(root / raw, root)
             path = resolve_project_path(voice[key], root=root)
+            if workshop and not path.is_relative_to(archive.resolve()):
+                raise AppError("OWNERSHIP_INVALID", "工坊音色权重必须归属于自己的音色目录。")
             if path.exists():
                 if path.suffix.lower() not in {".pth", ".ckpt"}:
                     raise AppError("OWNERSHIP_INVALID", "音色权重路径不是权重文件。")
@@ -182,7 +185,7 @@ def deletion_plan(voice_id, index_path, root=PROJECT_ROOT):
     for other in datasets:
         if dataset and other["dataset_id"] == dataset["dataset_id"]:
             continue
-        for key in ("source_path", "slice_dir", "list_path", "emotions_path", "feature_manifest"):
+        for key in ("source_path", "slice_dir", "list_path", "emotions_path", "emotion_suggestions_path", "feature_manifest"):
             if other.get(key):
                 path = resolve_project_path(other[key], root=root)
                 if any(path == p or path.is_relative_to(p) for p in roots):
@@ -359,6 +362,8 @@ def clone_dataset(dataset_id, *, root=PROJECT_ROOT):
             atomic_json(file, manifest)
         record = dict(original, dataset_id=new_id,
                       display_name=original["display_name"][:60] + " · 副本 " + new_id[-6:])
+        # Suggestions bind to the original dataset and transcript hashes.
+        record["emotion_suggestions_path"] = None
         for key in ("source_path", "slice_dir", "list_path", "emotions_path", "feature_manifest"):
             if record.get(key):
                 record[key] = mapped(record[key]).relative_to(root).as_posix()
@@ -393,6 +398,8 @@ def _migrate_ownership(root):
     used_weights = set()
     changed = False
     for voice in voices:
+        if voice.get("origin_type") == "workshop":
+            continue
         for key in ("gpt_weight", "sovits_weight"):
             if not voice.get(key):
                 continue

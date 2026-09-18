@@ -62,7 +62,7 @@ def voice_row_html(voice, sources):
     status = "已删除" if voice.status == "deleted" else "可用"
     return (f'<div class="voice-summary"><div class="voice-summary-title">'
             f'<strong>{escape(voice.display_name)}</strong><span class="voice-status">{status}</span></div>'
-            f'<p>来源数据集：{escape(source_name(voice.dataset_id, sources))}</p>'
+            f'<p>来源：{escape("创意工坊" if voice.origin_type == "workshop" else source_name(voice.dataset_id, sources))}</p>'
             f'<p class="voice-metadata">ID：{escape(voice.voice_id)} · 情绪：{escape(tags)}'
             f' · 创建：{voice.created_at.astimezone().strftime("%Y-%m-%d %H:%M")}</p></div>')
 
@@ -90,9 +90,11 @@ def request_voice_purge(voice_id):
         if not voice_id:
             raise AppError("VOICE_MISSING", "请先选择已删除音色。")
         pending = voice_service.prepare_voice_purge(voice_id)
+        scope = ("仅清理该工坊音色自己的权重、参考音频和档案目录。" if pending["dataset_id"] is None else
+                 "包括平台原音频副本、切片、全部标注、特征、训练工程及两个权重；不可恢复。")
         text = (f"确认彻底删除「{pending['display_name']}」（ID：{voice_id}）？\n"
                 f"将清理 {pending['files']} 个文件，约 {pending['bytes'] / 1024 / 1024:.1f} MB。\n"
-                "包括平台原音频副本、切片、全部标注、特征、训练工程及两个权重；不可恢复。已合成成品保留。")
+                f"{scope}已合成成品保留。")
         return pending, gr.update(visible=True), text
     except (AppError, OSError) as exc:
         return None, gr.update(visible=True), error_text(exc)
@@ -120,9 +122,12 @@ def _voice_detail_text(voice):
     def shown(path):
         return dataset_service.relative_path(path) if path else "未记录"
     status = {"verified": "可用", "deleted": "已删除", "draft": "未完成"}.get(voice.status, voice.status)
+    source = "创意工坊" if voice.origin_type == "workshop" else source_name(voice.dataset_id, dataset_names())
+    usage = ("\n真实使用验证通过（已完成合成；人工听测需另行确认）" if voice.usage_verified_at else
+             "\n安装成功，尚未进行真实合成验证") if voice.origin_type == "workshop" else ""
     return (f"{voice.display_name}\nID：{voice.voice_id}\n状态：{status}\n"
-                            f"来源数据集：{source_name(voice.dataset_id, dataset_names())}\nGPT：{shown(voice.gpt_weight)}\n"
-                            f"SoVITS：{shown(voice.sovits_weight)}\n参考情绪：" + ", ".join(ref.emotion for ref in voice.references))
+                            f"来源：{source}\nGPT：{shown(voice.gpt_weight)}\n"
+                            f"SoVITS：{shown(voice.sovits_weight)}\n参考情绪：" + ", ".join(ref.emotion for ref in voice.references) + usage)
 
 
 def submit_training(dataset_id, voice_id, display_name):

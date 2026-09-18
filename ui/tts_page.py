@@ -65,6 +65,7 @@ def render_tts_page(state):
     audio = gr.Audio(label="合成结果", interactive=False, show_download_button=True)
     voices.input(lambda value: value, voices, state["selected_voice"], queue=False, show_progress="hidden")
     voices.input(reference_choices, voices, emotions, queue=False, show_progress="hidden")
+    state["selected_voice"].change(reference_choices, state["selected_voice"], emotions, queue=False, show_progress="hidden")
     event = submit.click(
         synthesis_updates,
         [voices, text, emotions, speed, interval],

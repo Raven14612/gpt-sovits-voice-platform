@@ -1,0 +1,7 @@
+{
+  "base_url": "http://127.0.0.1:8090",
+  "connect_timeout_seconds": 5,
+  "read_timeout_seconds": 1800,
+  "max_package_bytes": 1073741824,
+  "auto_start_local": false
+}

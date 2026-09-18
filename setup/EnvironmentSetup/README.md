@@ -18,7 +18,7 @@ MVP 版本，仅提供给经过验证的 NVIDIA RTX 50 系 Windows 电脑使用�
 .\setup\EnvironmentSetup\start.bat --rollback data/migrations/事务ID
 ```
 
-默认报告为 `setup/EnvironmentSetup/reports/environment-report.json`，同目录自动生成 `environment-report-sanitized.json`。本地报告含实际路径、命令、导入来源与配置候选；分享时只选择 sanitized 文件。公开报告采用字段白名单，移除所有原始子进程输出、配置内容和路径。
+默认报告为 `data/logs/diagnostics/environment-report.json`，同目录自动生成 `environment-report-sanitized.json`。本地报告含实际路径、命令、导入来源与配置候选；分享时只选择 sanitized 文件。公开报告采用字段白名单，移除所有原始子进程输出、配置内容和路径。
 
 | 层级 | READY 的含义 |
 |---|---|

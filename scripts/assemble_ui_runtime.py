@@ -40,7 +40,7 @@ def main():
         "-r", str(ROOT / "config/ui-requirements.lock")], check=True, cwd=ROOT, timeout=1200)
     (stage / "python313._pth").write_text("python313.zip\n.\nLib\\site-packages\n..\\..\nimport site\n", encoding="utf-8")
     subprocess.run([str(stage / "python.exe"), "-s", "-c",
-        "import gradio,pydantic,yaml,ssl,numpy; print(gradio.__version__)"],
+        "import gradio,pydantic,yaml,ssl,numpy,onnxruntime,tokenizers,httpx; print(gradio.__version__)"],
         check=True, cwd=stage, timeout=60)
     (stage / "assembly.json").write_text(json.dumps({"python": lock,
         "requirements_sha256": hashlib.sha256((ROOT / "config/ui-requirements.lock").read_bytes()).hexdigest(),

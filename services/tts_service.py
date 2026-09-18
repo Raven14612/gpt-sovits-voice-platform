@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from adapters import GPTSoVITSAdapter
 from models.schemas import AppError, EngineConfig, GenerationRecord, TaskRecord, TaskStatus
-from services import history_service
+from services import history_service, voice_service
 from services.task_service import release_gpu, try_acquire_gpu, upsert_task, transition
 from services.voice_service import get_voice_profile
 from services.wav_service import inspect_wav
@@ -99,6 +99,11 @@ def synthesize(*, voice_id: str, target_text: str, output_path: Path, emotion: s
         current = current.model_copy(update={"output_info": info})
         upsert_task(transition(current, TaskStatus.SUCCEEDED, message="合成完成，结果已保存"))
         log("succeeded", result_id=record.result_id)
+        if profile.origin_type == "workshop":
+            try:
+                voice_service.mark_workshop_used(profile)
+            except (AppError, OSError):
+                log("workshop_usage_not_recorded")
         return output
     except Exception as exc:
         if published:

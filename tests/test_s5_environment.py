@@ -41,6 +41,16 @@ class EnvironmentSetupTests(unittest.TestCase):
         self.assertEqual(next(x for x in report['checks'] if x['key']=='cuda_tensor')['status'], 'NOT_VERIFIED')
         self.assertFalse(report['synthesis_executed'])
 
+    def test_gpu_scope_accepts_only_rtx50(self):
+        for name, expected in [('NVIDIA GeForce RTX 5060 Laptop GPU', 'PASS'),
+                               ('NVIDIA GeForce RTX 4060 Laptop GPU', 'FAIL')]:
+            with self.subTest(gpu=name), patch.object(c, '_run', return_value=(0,
+                    c.MARKER + json.dumps({'ok': True, 'tensor_sum': 4096.0, 'gpu_name': name,
+                                          'free_bytes': 6*1024**3, 'total_bytes': 8*1024**3}), 1)):
+                report = self.check()
+            scope = next(row for row in report['checks'] if row['key'] == 'gpu_scope')
+            self.assertEqual(scope['status'], expected)
+
     def test_cpu_only_cuda_failure_and_timeout_block_readiness(self):
         for code, data in [(1, {'ok': False, 'error': 'CPU-only Torch'}),
                            (1, {'ok': False, 'error': 'CUDA operation failed'}),

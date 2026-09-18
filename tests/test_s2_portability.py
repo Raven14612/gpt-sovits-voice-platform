@@ -10,6 +10,42 @@ from services.project_paths import project_environment, resolve_project_path
 
 
 class S2PortabilityTests(unittest.TestCase):
+    def test_training_utf8_option_propagates_to_embedded_python_worker(self):
+        import subprocess
+        from types import SimpleNamespace
+        from services import training_preparation_service as preparation
+        engine_python = Path(__file__).resolve().parents[1]/'engines/verified-v2pro/runtime/python.exe'
+        if not engine_python.exists():
+            self.skipTest('Requires embedded model runtime')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()/'中文 训练'
+            run = root/'data/training/fixture'
+            run.mkdir(parents=True)
+            plan = run/'plan.json'
+            plan.write_text(json.dumps({'status':'prepared_not_executed','dataset_id':'dataset','voice_id':'voice'}), encoding='utf-8')
+            config = SimpleNamespace(python_path=engine_python, engine_root=engine_python.parent, profile='test')
+            with patch.object(preparation, 'PROJECT_ROOT', root), patch.object(preparation, '_load_config', return_value=config), \
+                 patch.object(preparation, 'materialize_training_configs', return_value=(run/'s1.yaml', run/'s2.json')), \
+                 patch.object(preparation, '_training_references', return_value=[]):
+                params = preparation.training_parameters(plan, SimpleNamespace(dataset_id='dataset'), '测试', 'task')
+            fixture = run/'中文配置.json'
+            fixture.write_text('{"text":"中文路径"}', encoding='utf-8')
+            script = run/'spawn_probe.py'
+            script.write_text("import sys,multiprocessing,json\n"
+                              "def worker():\n"
+                              " assert sys.flags.utf8_mode == 1\n"
+                              " with open(sys.argv[1]) as f: assert json.load(f)['text']=='中文路径'\n"
+                              "if __name__=='__main__':\n"
+                              " p=multiprocessing.get_context('spawn').Process(target=worker); p.start(); p.join(20)\n"
+                              " if p.is_alive(): p.terminate(); p.join(); raise RuntimeError('worker timeout')\n"
+                              " assert p.exitcode==0\n", encoding='utf-8')
+            for key in ('gpt_command', 'sovits_command'):
+                command = params[key]
+                index = next(i for i, arg in enumerate(command) if arg.endswith('_train.py'))
+                result = subprocess.run(command[:index]+[str(script), str(fixture)], capture_output=True,
+                                        text=True, encoding='utf-8', errors='replace', timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_launcher_fails_for_missing_or_shared_model_interpreter(self):
         from scripts import launch
         with tempfile.TemporaryDirectory() as directory:

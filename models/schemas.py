@@ -126,17 +126,43 @@ class DatasetRecord(CompatBaseModel):
     slice_dir: Optional[Path] = None
     list_path: Optional[Path] = None
     emotions_path: Optional[Path] = None
+    emotion_suggestions_path: Optional[Path] = None
     feature_manifest: Optional[Path] = None
     status: str = "created"
     annotation_name: str = Field(default="", max_length=80)
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class EmotionSuggestionItem(CompatBaseModel):
+    audio_path: Path
+    text_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    suggested_emotion: Literal["neutral", "happy", "sad"]
+    raw_label: str = Field(min_length=1)
+    confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
+    requires_review: bool
+    accepted: bool = False
+
+
+class EmotionSuggestionFile(CompatBaseModel):
+    schema_version: Literal[1] = 1
+    dataset_id: str
+    annotation_path: Path
+    annotation_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    model_id: str
+    model_version: str
+    created_at: datetime = Field(default_factory=utc_now)
+    items: List[EmotionSuggestionItem]
+
+
 class VoiceProfile(CompatBaseModel):
     voice_id: str
     display_name: str = Field(min_length=1, max_length=80)
     feature_name: str = Field(min_length=1, max_length=80)
-    dataset_id: str
+    dataset_id: str = ""
+    origin_type: Literal["local_training", "workshop"] = "local_training"
+    origin_workshop_id: Optional[str] = None
+    package_hash: Optional[str] = None
+    usage_verified_at: Optional[datetime] = None
     gpt_weight: Optional[Path] = None
     sovits_weight: Optional[Path] = None
     references: List[EmotionReference] = Field(default_factory=list)

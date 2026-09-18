@@ -25,11 +25,11 @@ def _runtime_path(value):
 
 def _runtime_record(record: DatasetRecord) -> DatasetRecord:
     return record.model_copy(update={key: _runtime_path(getattr(record, key)) for key in
-        ("source_path", "slice_dir", "list_path", "emotions_path", "feature_manifest")})
+        ("source_path", "slice_dir", "list_path", "emotions_path", "emotion_suggestions_path", "feature_manifest")})
 
 def _stored_record(record: DatasetRecord) -> dict:
     data = record.model_dump(mode="json")
-    for key in ("source_path", "slice_dir", "list_path", "emotions_path", "feature_manifest"):
+    for key in ("source_path", "slice_dir", "list_path", "emotions_path", "emotion_suggestions_path", "feature_manifest"):
         if data.get(key):
             try: data[key] = Path(data[key]).resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
             except ValueError: data[key] = Path(data[key]).as_posix()
@@ -246,6 +246,7 @@ def _save_transcript(record, lines, emotions, status, index_path, data_root):
             "display_name": record.annotation_name or record.display_name + "·人工校对"}, ensure_ascii=False), encoding="utf-8")
         return upsert_dataset(record.model_copy(update={
             "list_path": transcript, "emotions_path": labels, "status": status, "feature_manifest": None,
+            "emotion_suggestions_path": None,
         }), index_path)
     except Exception:
         shutil.rmtree(directory)

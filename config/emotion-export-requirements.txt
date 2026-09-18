@@ -1,0 +1,10 @@
+# Publisher-only environment; never install torch/transformers into the UI runtime.
+# Verified on Windows x64 Python 3.13.
+torch==2.8.0
+transformers==4.51.3
+onnx==1.19.1
+onnxruntime==1.23.2
+tokenizers==0.21.4
+huggingface-hub==0.34.4
+numpy==2.2.6
+packaging==25.0

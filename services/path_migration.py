@@ -11,7 +11,7 @@ from uuid import uuid4
 from services.project_paths import resolve_project_path
 
 PATH_KEYS = {"engine_root", "python_path", "ui_python", "source_path", "slice_dir",
-             "list_path", "emotions_path", "feature_manifest", "gpt_weight", "sovits_weight",
+             "list_path", "emotions_path", "emotion_suggestions_path", "annotation_path", "feature_manifest", "gpt_weight", "sovits_weight",
              "audio_path", "output_path", "log_path", "pretrained_s1", "pretrained_s2G",
              "pretrained_s2D", "exp_dir", "s2_ckpt_dir", "save_weight_dir",
              "half_weights_save_dir", "train_semantic_path", "train_phoneme_path", "output_dir"}

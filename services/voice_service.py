@@ -529,6 +529,17 @@ def _write_json_index(index_path: Path, records: Iterable[VoiceProfile]) -> None
     _write_voice_data(index_path, [_stored_profile(item) for item in records])
 
 
+@serialized
+def mark_workshop_used(expected: VoiceProfile):
+    from models.schemas import utc_now
+    records = _read_voice_data(VOICE_INDEX)
+    row = next((r for r in records if r["voice_id"] == expected.voice_id), None)
+    if (row and row.get("origin_type") == "workshop" and row.get("status") == "verified"
+            and row.get("package_hash") == expected.package_hash):
+        row["usage_verified_at"] = utc_now().isoformat()
+        _write_voice_data(VOICE_INDEX, records)
+
+
 def _write_voice_data(index_path: Path, records: list[dict]) -> None:
     index_path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix="voices-", suffix=".json", dir=index_path.parent)

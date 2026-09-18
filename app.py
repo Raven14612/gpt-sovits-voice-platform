@@ -27,6 +27,7 @@ def build_app() -> gr.Blocks:
     with gr.Blocks(title="小渡鸦的语音合成平台哟", css=load_css(), theme=build_theme(),
                    fill_width=True, elem_classes=["rj-theme"], js=hint_js) as demo:
         render_root_layout()
+        demo.load(None, js=(PROJECT_ROOT / 'assets/workshop-dialog.js').read_text(encoding='utf-8'))
     demo.queue(default_concurrency_limit=1)
     return demo
 
@@ -34,6 +35,7 @@ def build_app() -> gr.Blocks:
 def main(*, port=7860):
     from services.process_lifetime import install_process_lifetime_job
     install_process_lifetime_job()
+    # Workshop connections are initiated only by workshop page actions.
     try:
         from services.asset_service import recover_deletions, migrate_ownership
         from services.history_service import backfill_snapshots
@@ -61,6 +63,8 @@ def main(*, port=7860):
             runtime.close()
         finally:
             unregister(app_id, port)
+            from services.workshop_runtime import stop_local_services
+            stop_local_services()
 
 
 if __name__ == "__main__":

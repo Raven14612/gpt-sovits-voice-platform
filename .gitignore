@@ -6,6 +6,11 @@ __pycache__/
 
 # Local engine configuration and secrets
 config/engine.local.json
+config/emotion-model.local.json
+config/workshop.local.json
+models/emotion/
+data/model-release/
+workshop_data/
 .env
 
 # User-provided audio, generated files and model weights
@@ -21,6 +26,8 @@ data/logs/*
 data/training/
 !data/logs/.gitkeep
 data/index/
+data/private/
+data/workshop/
 data/ownership/
 data/runtime/
 data/*.json
@@ -55,3 +62,8 @@ _archive/migration-*/
 # Local archives and environment reports are not product documentation.
 _archive/
 setup/EnvironmentSetup/reports/
+
+# Private design documents, generated diagrams and development journals stay local.
+Documents/
+uml/
+最终阶段开发周志.md
