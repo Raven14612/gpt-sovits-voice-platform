@@ -14,6 +14,7 @@ from ui.audio_page import dataset_choices
 from ui.task_status import refresh_status, refresh_task_picker, saved_task_choices
 from ui.task_progress import refresh_progress
 from ui.workshop_page import render_workshop_page, refresh_workshop
+from ui.help import render_help
 
 PAGE_COUNT = 6
 
@@ -111,14 +112,7 @@ def render_root_layout() -> None:
             task_picker.input(refresh_status, detail_inputs, detail_outputs, queue=False, show_progress="hidden")
             refresh_tasks.click(refresh_task_picker, task_picker, task_picker, queue=False, show_progress="hidden")
 
-    # Replace the help placeholder with the demonstration document URL when ready.
-    gr.HTML('''<nav aria-label="页脚链接">
-        <a role="link" aria-disabled="true" title="演示文档准备中">项目的使用帮助</a>
-        <span aria-hidden="true">·</span>
-        <a href="https://www.gradio.app/" target="_blank" rel="noopener noreferrer">Gradio技术鸣谢</a>
-        <span aria-hidden="true">·</span>
-        <a href="https://github.com/Raven14612" target="_blank" rel="noopener noreferrer">关于</a>
-    </nav>''', elem_id="project-footer", padding=False)
+    render_help()
 
     pages = [audio_page, voice_page, tts_page, result_page, task_page, workshop_page]
     navigation = [audio_button, voice_button, tts_button, result_button, task_button, workshop_button]

@@ -17,8 +17,8 @@ import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-TREES = ('adapters', 'assets', 'services', 'ui', 'tests', 'workshop_server', 'setup/EnvironmentSetup/env_setup')
-FILES = ('app.py', 'start.bat', 'README.md', 'LICENSE', 'NOTICE.md', 'requirements.txt', 'AGENTS.md',
+TREES = ('adapters', 'assets', 'services', 'ui', 'tests', 'workshop_server', 'scripts', 'setup', 'uml')
+FILES = ('.gitignore', 'app.py', 'start.bat', 'README.md', 'LICENSE', 'NOTICE.md', 'requirements.txt', 'AGENTS.md',
          'models/__init__.py', 'models/schemas.py',
          'setup/EnvironmentSetup/README.md', 'setup/EnvironmentSetup/PREPARE.md', 'setup/EnvironmentSetup/start.bat')
 CONFIGS = ('engine.example.json', 'engine.portable.example.json', 'emotion-model.example.json', 'workshop.example.json',
@@ -29,6 +29,7 @@ SCRIPTS = ('launch.py', 'assemble_ui_runtime.py', 'assemble_release.py', 'verify
            'workshop_browser_smoke.py', 'workshop_browser_smoke.cjs')
 ENGINE_FILES = ('api.py', 'api_v2.py', 'config.py', 'LICENSE', 'README.md', 'requirements.txt', 'extra-req.txt')
 SKIP_PARTS = {'__pycache__', '.git', '.cache', '.pytest_cache', '.ipynb_checkpoints'}
+MODEL_SUFFIXES = {'.ckpt', '.pth', '.safetensors', '.onnx'}
 
 
 def digest(path):
@@ -43,7 +44,7 @@ def allowed_tree(base):
         children[:] = sorted(n for n in children if n not in SKIP_PARTS)
         for name in sorted(names):
             path = Path(directory) / name
-            if path.suffix.lower() in ('.pyc', '.pyo', '.tmp') or name == '.gitignore':
+            if path.suffix.lower() in ('.pyc', '.pyo', '.tmp'):
                 continue
             if path.suffix.lower() == '.log' and name != 'record.log':
                 continue
@@ -56,12 +57,18 @@ def select_files(root, kind):
     paths = [root / p for p in FILES]
     paths += [root / 'config' / p for p in CONFIGS]
     paths += [root / 'scripts' / p for p in SCRIPTS]
-    paths += list((root / 'Documents').glob('*.md'))
+    paths += list(allowed_tree(root / 'Documents'))
     for tree in TREES:
         paths.extend(allowed_tree(root / tree))
-    # Preserve vendored license notices even in the source-only distribution.
+    # Include every first-party model source file, but add the large emotion
+    # model only through its pinned runtime manifest below.
+    paths += [path for path in allowed_tree(root / 'models')
+              if path.relative_to(root / 'models').parts[0] != 'emotion']
+    # Ship the complete vendored source tree. Downloaded/trained weight formats
+    # stay out of this tree; the runnable engine resources are selected from
+    # the independently verified engine snapshot below.
     for path in allowed_tree(root / 'third_party'):
-        if path.name.lower().startswith(('license', 'notice', 'copying')):
+        if path.suffix.lower() not in MODEL_SUFFIXES:
             paths.append(path)
     if kind == 'runtime':
         engine = root / 'engines/verified-v2pro'

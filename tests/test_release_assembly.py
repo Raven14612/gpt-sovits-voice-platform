@@ -20,6 +20,7 @@ class ReleaseAssemblyTests(TestCase):
             selected = {p.relative_to(root).as_posix() for p in release.select_files(root, 'source')}
             self.assertIn('services/service.py', selected)
             self.assertIn('third_party/vendor/LICENSE', selected)
+            self.assertIn('scripts/assemble_release.py', selected)
             self.assertFalse(any(p.startswith(('data/', '_archive/', 'models/emotion/')) for p in selected))
             self.assertNotIn('config/workshop.local.json', selected)
             self.assertNotIn('services/__pycache__/secret.pyc', selected)

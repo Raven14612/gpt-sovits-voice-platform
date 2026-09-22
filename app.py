@@ -28,6 +28,7 @@ def build_app() -> gr.Blocks:
                    fill_width=True, elem_classes=["rj-theme"], js=hint_js) as demo:
         render_root_layout()
         demo.load(None, js=(PROJECT_ROOT / 'assets/workshop-dialog.js').read_text(encoding='utf-8'))
+        demo.load(None, js=(PROJECT_ROOT / 'assets/help-dialog.js').read_text(encoding='utf-8'))
     demo.queue(default_concurrency_limit=1)
     return demo
 

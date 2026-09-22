@@ -29,6 +29,7 @@ data/index/
 data/private/
 data/workshop/
 data/ownership/
+data/deletions/
 data/runtime/
 data/*.json
 data/*.txt

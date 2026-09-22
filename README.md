@@ -1,8 +1,27 @@
 # 小渡鸦的语音合成平台哟
 
+当前交付版本：**Final-MVP1.0**。完整运行包已包含应用源码、包内解释器、GPT-SoVITS v2Pro 训练与合成资源以及离线情绪模型，可解压后直接双击 `start.bat` 启动。
+
 基于 GPT-SoVITS 的本地语音工作台：导入长音频、切分识别、确认标注、提取特征、训练音色，再使用音色合成并管理语音成品。界面采用米白与砖红的统一复古配色。
 
 **MVP：当前面向 NVIDIA RTX 50 系 Windows 电脑。** 每台电脑仍须通过环境检查；其他平台和显卡尚未纳入支持范围。使用有权处理的音频和模型。
+
+## 下载 MVP 1.0
+
+| 下载内容 | 地址 |
+|---|---|
+| 项目源码与版本说明 | [GitHub Releases](https://github.com/Raven14612/gpt-sovits-voice-platform/releases) |
+| 网盘交付资料、项目说明及相关资源 | [百度网盘](https://pan.baidu.com/s/1Hd4z_504r-FfFcx2C-u0gA?pwd=aeuy)，提取码：**aeuy** |
+
+GitHub Release 的源码包不包含 Python 运行环境、已安装依赖、基础模型或私人业务数据。需要完整运行包及配套资料时，请使用上方网盘入口；下载源码进行开发时，请先按[环境准备说明](setup/EnvironmentSetup/PREPARE.md)准备运行环境。
+
+完整运行包文件名为 `Final-MVP1.0.zip`，大小为 **16,869,507,981 字节**，SHA-256 为：
+
+```text
+94ac72911bd6013f5889be159a38605363f1e7d4dfe08007eaba5d096de064bc
+```
+
+下载后可使用 `Get-FileHash -Algorithm SHA256 .\Final-MVP1.0.zip` 核对。此哈希对应已验证的本地完整包，网盘文件以发布者实际提供的内容为准。
 
 ## 启动
 
@@ -14,9 +33,11 @@
 ./start.bat --port 17860            # 使用其他界面端口
 ```
 
-启动使用包内 `runtimes/ui/python.exe`；模型使用独立的 `engines/verified-v2pro/runtime/python.exe`。源码仓库不等于已包含模型和运行时的完整运行包。缺少环境或资源时，按[环境准备说明](setup/EnvironmentSetup/PREPARE.md)操作，再运行[环境诊断](setup/EnvironmentSetup/README.md)。
+启动使用包内 `runtimes/ui/python.exe`；模型使用独立的 `engines/verified-v2pro/runtime/python.exe`。`Final-MVP1.0` 完整运行包已包含这两套运行环境。缺少环境或资源时，按[环境准备说明](setup/EnvironmentSetup/PREPARE.md)操作，再运行[环境诊断](setup/EnvironmentSetup/README.md)。
 
 ## 使用流程
+
+完整操作说明见[使用指南](assets/user-guide.md)，也可在任意页面底部点击「项目的使用帮助」打开阅读弹窗。
 
 1. **音频数据处理**：上传 PCM WAV、试听、填写数据集名称并保存；选择保留范围，点击“切分并识别”。识别结果满意时直接“确认标注并用于训练”；需要修改时展开可选校对区。
 2. **音色训练与仓库**：选择已确认的数据集，提取特征，再填写音色名称并训练。成功后归档 GPT 与 SoVITS 两个权重，作为一个音色文件组管理。
@@ -41,6 +62,8 @@ GPU 任务串行执行。发生错误先查看状态说明和日志；应用重�
 
 ## 文档
 
+- [用户操作指南](assets/user-guide.md)随源码提供，也可从应用页脚打开。
+- 项目说明和相关交付资料见[百度网盘](https://pan.baidu.com/s/1Hd4z_504r-FfFcx2C-u0gA?pwd=aeuy)，提取码：**aeuy**。
 - 产品设计、数据生命周期和交付验收资料保存在开发目录的本地 `Documents/` 中，不随项目源码发布。
 
 ## 目录与备份
